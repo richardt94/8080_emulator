@@ -30,5 +30,7 @@ int main (int argc, char **argv)
         pc += disassembleOp(buf, pc, stdout);
     }
 
+    free(buf);
+
     return 0;
 }
