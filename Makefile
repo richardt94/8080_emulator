@@ -15,10 +15,12 @@ $(OBJDIR):
 $(BINDIR):
 	mkdir $(BINDIR)
 
-clean:
-	rm -rf $(OBJDIR) $(BINDIR)
-
 %: $(OBJDIR)/%.o $(BINDIR)
 	$(CC) -o $(BINDIR)/$@ $<
+
+.PHONY: clean
+
+clean:
+	rm -rf $(OBJDIR) $(BINDIR)
 
 
