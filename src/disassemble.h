@@ -1,4 +1,5 @@
 #ifndef _DISASSEMBLER_H
+#define _DISASSEMBLER_H
 #include <stdio.h>
 
 typedef unsigned char byte;

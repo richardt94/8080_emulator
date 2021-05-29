@@ -1,4 +1,5 @@
 #ifndef _CPU_H
+#define _CPU_H
 
 typedef unsigned char byte;
 
@@ -30,10 +31,28 @@ void unknownOp (CPUState *state) {
     exit(1);
 }
 
-// helper functions TODO
-// byte arithmeticOperand(uint16_t atype, CPUState *state) {
+// helper functions
+byte arithmeticOperand(uint16_t atype, CPUState *state) {
+    byte r2;
+    if (atype < 6) { //b, c, d, e, h, l addto a
+        r2 = state->reg[atype + 1];
+    } else if atype == 7 {
+        r2 = state->reg[0];
+    } else {
+        //hl is a memory address
+        uint16_t adr = ((uint16_t) state->reg[5] << 8) | (state->reg[6]);
+        r2 = state->memory[adr];
+    }
+    return r2;
+}
 
-// }
+void set_result(uint16_t res, CPUState *state) {
+    state->fl.z = (res & 0xff) == 0; //zero
+    state->fl.s = (res & 0x80) != 0; //sign
+    state->fl.cy = res > 0xff; //carry (result > 255)
+    state->fl.p = parity(answer & 0xff);
+    state->reg[0] = answer & 0xff; //answer is always sent to A (the accumulator)
+}
 
 //instruction implementations
 void executeOp(CPUState *state) {
@@ -52,31 +71,31 @@ void executeOp(CPUState *state) {
             byte r2;
             //immediate
             if (*opcode == 0xc6) {
-                r2 = opcode[1]; pc++;
+                r2 = opcode[1]; state->pc++;
             } else {
                 //registers are just an array of bytes
-                uint16_t atype = *opcode - 0x80;
-                if (atype < 6) { //b, c, d, e, h, l addto a
-                    r2 = state->reg[atype + 1];
-                } else if atype == 7 {
-                    r2 = state->reg[0];
-                } else {
-                    //hl is a memory address
-                    uint16_t adr = ((uint16_t) state->reg[5] << 8) | (state->reg[6]);
-                    r2 = state->memory[adr];
-                }
+                r2 = arithmeticOperand(*opcode - 0x80, state);
             }
             //avoid overflow with 16-bit precision
             uint16_t res = (uint16_t) state->reg[0] + (uint16_t) r2;
-
-            state->fl.z = (res & 0xff) == 0; //zero
-            state->fl.s = (res & 0x80) != 0; //sign
-            state->fl.cy = res > 0xff; //carry (result > 255)
-            state->fl.p = parity(answer & 0xff);
-            state->reg[0] = answer & 0xff; //answer is always sent to A (the accumulator)
+            set_result(res, state);
+            break;
         }
-        break;
-        
+        //SUB, SUBI
+        case 0x90: case 0x91: case 0x92: case 0x93:
+        case 0x94: case 0x95: case 0x96: case 0x97:
+        case 0xd6:
+        {
+            byte r2;
+            if (*opcode == 0xd6) {
+                r2 = opcode[1]; state->pc++;
+            } else {
+                r2 = arithmeticOperand(*opcode - 0x90, state);
+            }
+            uint16_t res = (uint16_t) state->reg[0] - (uint16_t) r2;
+            set_result(res, state);
+            break;
+        }
         //HLT
         case 0x76: exit(0); break;
         default: unknownOp(state); break;
