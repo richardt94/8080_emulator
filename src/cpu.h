@@ -1,7 +1,9 @@
 #ifndef _CPU_H
 #define _CPU_H
 
-typedef unsigned char byte;
+#include <stdint.h>
+
+typedef uint8_t byte;
 
 //data structures for storing the state of the 8080 CPU and memory
 
@@ -55,7 +57,8 @@ void set_result(uint16_t res, CPUState *state) {
 }
 
 //instruction implementations
-void executeOp(CPUState *state) {
+//returns true once CPU halts
+bool executeOp(CPUState *state) {
     byte *opcode = state->memory[state->pc];
     switch (*opcode) {
         //nops
@@ -92,15 +95,16 @@ void executeOp(CPUState *state) {
             } else {
                 r2 = arithmeticOperand(*opcode - 0x90, state);
             }
-            uint16_t res = (uint16_t) state->reg[0] - (uint16_t) r2;
+            uint16_t res = (uint16_t) state->reg[0] + (uint16_t) (~r2 + 1);
             set_result(res, state);
             break;
         }
         //HLT
-        case 0x76: exit(0); break;
+        case 0x76: return true; break;
         default: unknownOp(state); break;
     }
     state->pc++;
+    return false;
 }
 
 #endif _CPU_H
