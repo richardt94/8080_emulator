@@ -95,8 +95,11 @@ bool executeOp(CPUState *state) {
             } else {
                 r2 = arithmeticOperand(*opcode - 0x90, state);
             }
-            uint16_t res = (uint16_t) state->reg[0] + (uint16_t) (~r2 + 1);
+            //explicit two's complement to ensure flags are set correctly
+            uint16_t res = (uint16_t) state->reg[0] + (uint16_t) (~r2) + 1;
             set_result(res, state);
+            //carry flag works opposite to addition on 8080
+            state->fl.cy = !state->fl.cy;
             break;
         }
         //HLT
