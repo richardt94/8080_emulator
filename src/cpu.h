@@ -2,6 +2,8 @@
 #define _CPU_H
 
 #include <stdint.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 typedef uint8_t byte;
 
@@ -18,14 +20,39 @@ typedef struct Flags {
 
 typedef struct CPUState {
     //registers (order a, b, c, d, e, h, l)
-    byte[7] reg;
+    byte reg[7];
 
     byte sp; //stack pointer
     byte pc; //program counter/instruction pointer
     byte *memory; //RAM
-    struct Flags fl;
+    Flags fl;
     byte int_enable;
 } CPUState;
+
+CPUState* newState() {
+    CPUState* cs = malloc(sizeof(CPUState));
+    cs->fl.z = 0;
+    cs->fl.s = 0;
+    cs->fl.p = 0;
+    cs->fl.cy = 0;
+    cs->fl.ac = 0;
+    cs->fl.pad = 0;
+
+    for (int r = 0; r < 7; r++) {
+        cs->reg[r] = 0;
+    }
+    cs->sp = 0;
+    cs->pc = 0;
+    cs->int_enable = 0;
+
+    cs->memory = (byte *) malloc(8192 * sizeof(byte));
+    return cs;
+}
+
+void destroyState(CPUState *cs) {
+    free(cs->memory);
+    free(cs);
+}
 
 //handling for unimplemented ops
 void unknownOp (CPUState *state) {
@@ -38,7 +65,7 @@ byte arithmeticOperand(uint16_t atype, CPUState *state) {
     byte r2;
     if (atype < 6) { //b, c, d, e, h, l addto a
         r2 = state->reg[atype + 1];
-    } else if atype == 7 {
+    } else if (atype == 7) {
         r2 = state->reg[0];
     } else {
         //hl is a memory address
@@ -52,14 +79,16 @@ void set_result(uint16_t res, CPUState *state) {
     state->fl.z = (res & 0xff) == 0; //zero
     state->fl.s = (res & 0x80) != 0; //sign
     state->fl.cy = res > 0xff; //carry (result > 255)
-    state->fl.p = parity(answer & 0xff);
-    state->reg[0] = answer & 0xff; //answer is always sent to A (the accumulator)
+    state->fl.p = 0;//parity(answer & 0xff);
+    state->reg[0] = res & 0xff; //res is always sent to A (the accumulator)
 }
+
+//TODO bool parity(byte b);
 
 //instruction implementations
 //returns true once CPU halts
-bool executeOp(CPUState *state) {
-    byte *opcode = state->memory[state->pc];
+int executeOp(CPUState *state) {
+    byte *opcode = &state->memory[state->pc];
     switch (*opcode) {
         //nops
         case 0x00: case 0x08: case 0x10: case 0x18:
@@ -103,11 +132,11 @@ bool executeOp(CPUState *state) {
             break;
         }
         //HLT
-        case 0x76: return true; break;
+        case 0x76: return 1; break;
         default: unknownOp(state); break;
     }
     state->pc++;
-    return false;
+    return 0;
 }
 
-#endif _CPU_H
+#endif //_CPU_H
