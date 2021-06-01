@@ -11,6 +11,7 @@ void test_basic_add() {
     cs->memory[0] = 0x80;
     assert(executeOp(cs) == 0);
     assert(cs->reg[0] == 3);
+    destroyState(cs);
 }
 
 void test_basic_sub() {
@@ -22,6 +23,7 @@ void test_basic_sub() {
     cs->memory[0] = 0x90;
     assert(executeOp(cs) == 0);
     assert(cs->reg[0] == 1);
+    destroyState(cs);
 }
 
 void main()
