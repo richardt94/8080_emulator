@@ -14,6 +14,20 @@ void test_basic_add() {
     destroyState(cs);
 }
 
+void test_add_from_memory() {
+    CPUState* cs = newState();
+    //store at address 3ff (1023)
+    cs->reg[0] = 1;
+    cs->reg[5] = 0x03;
+    cs->reg[6] = 0xff;
+
+    cs->memory[0] = 0x86;
+    cs->memory[1023] = 2;
+    assert(executeOp(cs) == 0);
+    assert(cs->reg[0] == 3);
+    destroyState(cs);
+}
+
 void test_basic_sub() {
     CPUState* cs = newState();
     //test the SUB instruction with 2 - 1
@@ -30,4 +44,5 @@ void main()
 {
     test_basic_add();
     test_basic_sub();
+    test_add_from_memory();
 }

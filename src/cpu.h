@@ -45,7 +45,7 @@ CPUState* newState() {
     cs->pc = 0;
     cs->int_enable = 0;
 
-    cs->memory = (byte *) malloc(8192 * sizeof(byte));
+    cs->memory = (byte *) calloc(8192, sizeof(byte));
     return cs;
 }
 
