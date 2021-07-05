@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <check.h>
-#include "cpu.h"
+#include "../src/cpu.h"
 
 START_TEST (test_basic_add)
 {
