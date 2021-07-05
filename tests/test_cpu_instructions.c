@@ -35,9 +35,28 @@ END_TEST
 
 START_TEST (test_add_carry)
 {
+    CPUState* cs = newState();
+    cs->reg[0] = 0xf0;
+    cs->reg[1] = 0x10;
+    cs->memory[0] = 0x80;
 
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->fl.cy, 1);
+    destroyState(cs);
 }
 END_TEST
+
+START_TEST (test_add_aux_carry)
+{
+    CPUState* cs = newState();
+    cs->reg[0] = 0x0f;
+    cs->reg[1] = 0x01;
+    cs->memory[0] = 0x80;
+
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->fl.ac, 1);
+    destroyState(cs);
+}
 
 START_TEST (test_basic_sub)
 {
@@ -64,6 +83,7 @@ Suite *cpu_suite(void) {
     tcase_add_test(tc_arithmetic, test_add_from_memory);
     tcase_add_test(tc_arithmetic, test_basic_sub);
     tcase_add_test(tc_arithmetic, test_add_carry);
+    tcase_add_test(tc_arithmetic, test_add_aux_carry);
 
     suite_add_tcase(s, tc_arithmetic);
 
@@ -78,7 +98,7 @@ int main(void) {
     s = cpu_suite();
     sr = srunner_create(s);
 
-    srunner_run_all(sr, CK_NORMAL);
+    srunner_run_all(sr, CK_VERBOSE);
     number_failed = srunner_ntests_failed(sr);
     srunner_free(sr);
     return (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
