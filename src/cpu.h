@@ -110,6 +110,8 @@ int executeOp(CPUState *state) {
             }
             //avoid overflow with 16-bit precision
             uint16_t res = (uint16_t) state->reg[0] + (uint16_t) r2;
+            //set aux carry
+            state->fl.ac = (state->reg[0] & 0x0f) + (r2 & 0x0f) > 0x0f;
             set_result(res, state);
             break;
         }
@@ -125,9 +127,11 @@ int executeOp(CPUState *state) {
                 r2 = arithmeticOperand(*opcode - 0x90, state);
             }
             //explicit two's complement to ensure flags are set correctly
-            uint16_t res = (uint16_t) state->reg[0] + (uint16_t) (~r2) + 1;
+            uint16_t sub_2c = (uint16_t) (~r2) + 1;
+            uint16_t res = (uint16_t) state->reg[0] + sub_2c;
+            state->fl.ac = (state->reg[0] & 0x0f) + (sub_2c & 0x0f) > 0x0f;
             set_result(res, state);
-            //carry flag works opposite to addition on 8080
+            //carry flag works opposite to addition on 8080 (but not aux carry)
             state->fl.cy = !state->fl.cy;
             break;
         }

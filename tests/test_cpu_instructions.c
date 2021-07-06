@@ -2,9 +2,18 @@
 #include <check.h>
 #include "../src/cpu.h"
 
+CPUState* cs;
+
+void state_setup(void) {
+    cs = newState();
+}
+
+void state_teardown(void) {
+    destroyState(cs);
+}
+
 START_TEST (test_basic_add)
 {
-    CPUState* cs = newState();
     //test an ADD instruction - set the accumulator to 1
     //and add 2. no fancy carries etc.
     cs->reg[0] = 1;
@@ -13,13 +22,11 @@ START_TEST (test_basic_add)
     cs->memory[0] = 0x80;
     ck_assert_int_eq(executeOp(cs), 0);
     ck_assert_int_eq(cs->reg[0], 3);
-    destroyState(cs);
 }
 END_TEST
 
 START_TEST (test_add_from_memory)
 {
-    CPUState* cs = newState();
     //store at address 3ff (1023)
     cs->reg[0] = 1;
     cs->reg[5] = 0x03;
@@ -29,39 +36,33 @@ START_TEST (test_add_from_memory)
     cs->memory[1023] = 2;
     ck_assert_int_eq(executeOp(cs), 0);
     ck_assert_int_eq(cs->reg[0], 3);
-    destroyState(cs);
 }
 END_TEST
 
 START_TEST (test_add_carry)
 {
-    CPUState* cs = newState();
     cs->reg[0] = 0xf0;
     cs->reg[1] = 0x10;
     cs->memory[0] = 0x80;
 
     ck_assert_int_eq(executeOp(cs), 0);
     ck_assert_int_eq(cs->fl.cy, 1);
-    destroyState(cs);
 }
 END_TEST
 
 START_TEST (test_add_aux_carry)
 {
-    CPUState* cs = newState();
     cs->reg[0] = 0x0f;
     cs->reg[1] = 0x01;
     cs->memory[0] = 0x80;
 
     ck_assert_int_eq(executeOp(cs), 0);
     ck_assert_int_eq(cs->fl.ac, 1);
-    destroyState(cs);
 }
 END_TEST
 
 START_TEST (test_basic_sub)
 {
-    CPUState* cs = newState();
     //test the SUB instruction with 2 - 1
     cs->reg[0] = 2;
     cs->reg[1] = 1;
@@ -69,7 +70,27 @@ START_TEST (test_basic_sub)
     cs->memory[0] = 0x90;
     ck_assert_int_eq(executeOp(cs), 0);
     ck_assert_int_eq(cs->reg[0], 1);
-    destroyState(cs);
+}
+END_TEST
+
+START_TEST (test_sub_carry)
+{
+    //number greater than acc should set the carry ("borrow") bit
+    cs->reg[0] = 0x0e;
+    cs->reg[1] = 0x12;
+    cs->memory[0] = 0x90;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->fl.cy, 1);
+}
+END_TEST
+
+START_TEST (test_sub_self_reset) {
+    //SUB A should reset the carry bit and clear the accumulator
+    cs->reg[0] = 0x3e;
+    cs->memory[0] = 0x97;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[0], 0);
+    ck_assert_int_eq(cs->fl.cy, 0);
 }
 END_TEST
 
@@ -79,12 +100,15 @@ Suite *cpu_suite(void) {
 
     s = suite_create("CPU Instructions");
     tc_arithmetic = tcase_create("Arithmetic instructions");
+    tcase_add_checked_fixture(tc_arithmetic, state_setup, state_teardown);
 
     tcase_add_test(tc_arithmetic, test_basic_add);
     tcase_add_test(tc_arithmetic, test_add_from_memory);
     tcase_add_test(tc_arithmetic, test_basic_sub);
     tcase_add_test(tc_arithmetic, test_add_carry);
     tcase_add_test(tc_arithmetic, test_add_aux_carry);
+    tcase_add_test(tc_arithmetic, test_sub_carry);
+    tcase_add_test(tc_arithmetic, test_sub_self_reset);
 
     suite_add_tcase(s, tc_arithmetic);
 
