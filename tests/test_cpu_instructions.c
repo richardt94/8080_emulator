@@ -57,6 +57,7 @@ START_TEST (test_add_aux_carry)
     ck_assert_int_eq(cs->fl.ac, 1);
     destroyState(cs);
 }
+END_TEST
 
 START_TEST (test_basic_sub)
 {
