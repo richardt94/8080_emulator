@@ -94,6 +94,16 @@ START_TEST (test_sub_self_reset) {
 }
 END_TEST
 
+START_TEST (test_sub_aux_carry) {
+    //aux flag works same way as adding.
+    cs->reg[0] = 8;
+    cs->reg[1] = 1;
+    cs->memory[0] = 0x90;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->fl.ac, 1);
+}
+END_TEST
+
 Suite *cpu_suite(void) {
     Suite *s;
     TCase *tc_arithmetic;
@@ -104,11 +114,12 @@ Suite *cpu_suite(void) {
 
     tcase_add_test(tc_arithmetic, test_basic_add);
     tcase_add_test(tc_arithmetic, test_add_from_memory);
-    tcase_add_test(tc_arithmetic, test_basic_sub);
     tcase_add_test(tc_arithmetic, test_add_carry);
     tcase_add_test(tc_arithmetic, test_add_aux_carry);
+    tcase_add_test(tc_arithmetic, test_basic_sub);
     tcase_add_test(tc_arithmetic, test_sub_carry);
     tcase_add_test(tc_arithmetic, test_sub_self_reset);
+    tcase_add_test(tc_arithmetic, test_sub_aux_carry);
 
     suite_add_tcase(s, tc_arithmetic);
 
