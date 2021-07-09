@@ -75,15 +75,24 @@ byte arithmeticOperand(uint16_t atype, CPUState *state) {
     return r2;
 }
 
+uint8_t parity(byte b) {
+    // even bits set - parity 1,
+    // odd bits set - parity 0
+    int set = 0;
+    while (b > 0) {
+        set += b % 2;
+        b /= 2;
+    }
+    return !(set % 2);
+}
+
 void set_result(uint16_t res, CPUState *state) {
     state->fl.z = (res & 0xff) == 0; //zero
     state->fl.s = (res & 0x80) != 0; //sign
     state->fl.cy = res > 0xff; //carry (result > 255)
-    state->fl.p = 0;//parity(answer & 0xff);
+    state->fl.p = parity(res & 0xff);
     state->reg[0] = res & 0xff; //res is always sent to A (the accumulator)
 }
-
-//TODO bool parity(byte b);
 
 //instruction implementations
 //returns true once CPU halts

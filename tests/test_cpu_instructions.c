@@ -61,6 +61,16 @@ START_TEST (test_add_aux_carry)
 }
 END_TEST
 
+START_TEST (test_add_parity)
+{
+    cs->reg[0] = 0x2e;
+    cs->reg[1] = 0x6c;
+    cs->memory[0] = 0x80;
+
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->fl.p, 1);
+}
+
 START_TEST (test_basic_sub)
 {
     //test the SUB instruction with 2 - 1
@@ -73,7 +83,7 @@ START_TEST (test_basic_sub)
 }
 END_TEST
 
-START_TEST (test_sub_carry)
+START_TEST (test_sub_greater)
 {
     //number greater than acc should set the carry ("borrow") bit
     cs->reg[0] = 0x0e;
@@ -81,6 +91,8 @@ START_TEST (test_sub_carry)
     cs->memory[0] = 0x90;
     ck_assert_int_eq(executeOp(cs), 0);
     ck_assert_int_eq(cs->fl.cy, 1);
+    //result should be negative
+    ck_assert_int_eq(cs->fl.s, 1);
 }
 END_TEST
 
@@ -116,8 +128,9 @@ Suite *cpu_suite(void) {
     tcase_add_test(tc_arithmetic, test_add_from_memory);
     tcase_add_test(tc_arithmetic, test_add_carry);
     tcase_add_test(tc_arithmetic, test_add_aux_carry);
+    tcase_add_test(tc_arithmetic, test_add_parity);
     tcase_add_test(tc_arithmetic, test_basic_sub);
-    tcase_add_test(tc_arithmetic, test_sub_carry);
+    tcase_add_test(tc_arithmetic, test_sub_greater);
     tcase_add_test(tc_arithmetic, test_sub_self_reset);
     tcase_add_test(tc_arithmetic, test_sub_aux_carry);
 
