@@ -71,6 +71,17 @@ START_TEST (test_add_parity)
     ck_assert_int_eq(cs->fl.p, 1);
 }
 
+START_TEST (test_adi)
+{
+    //immediate add (two-byte instruction)
+    cs->reg[0] = 0x0f;
+    cs->memory[0] = 0xc6;
+    cs->memory[1] = 0xf0;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[0], 0xff);
+    ck_assert_int_eq(cs->pc, 2);
+}
+
 START_TEST (test_basic_sub)
 {
     //test the SUB instruction with 2 - 1
@@ -116,6 +127,16 @@ START_TEST (test_sub_aux_carry) {
 }
 END_TEST
 
+START_TEST (test_subi) {
+    //immediate sub
+    cs->reg[0] = 0xff;
+    cs->memory[0] = 0xd6;
+    cs->memory[1] = 0x0f;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[0], 0xf0);
+    ck_assert_int_eq(cs->pc, 2);
+}
+
 Suite *cpu_suite(void) {
     Suite *s;
     TCase *tc_arithmetic;
@@ -129,10 +150,12 @@ Suite *cpu_suite(void) {
     tcase_add_test(tc_arithmetic, test_add_carry);
     tcase_add_test(tc_arithmetic, test_add_aux_carry);
     tcase_add_test(tc_arithmetic, test_add_parity);
+    tcase_add_test(tc_arithmetic, test_adi);
     tcase_add_test(tc_arithmetic, test_basic_sub);
     tcase_add_test(tc_arithmetic, test_sub_greater);
     tcase_add_test(tc_arithmetic, test_sub_self_reset);
     tcase_add_test(tc_arithmetic, test_sub_aux_carry);
+    tcase_add_test(tc_arithmetic, test_subi);
 
     suite_add_tcase(s, tc_arithmetic);
 
