@@ -70,6 +70,7 @@ START_TEST (test_add_parity)
     ck_assert_int_eq(executeOp(cs), 0);
     ck_assert_int_eq(cs->fl.p, 1);
 }
+END_TEST
 
 START_TEST (test_adi)
 {
@@ -81,6 +82,34 @@ START_TEST (test_adi)
     ck_assert_int_eq(cs->reg[0], 0xff);
     ck_assert_int_eq(cs->pc, 2);
 }
+END_TEST
+
+START_TEST (test_adc_set)
+{
+    //add using the carry bit
+    cs->reg[0] = 0x0f;
+    cs->reg[1] = 0xf0;
+    cs->fl.cy = 1;
+    cs->memory[0] = 0x88;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[0], 0);
+    ck_assert_int_eq(cs->fl.cy, 1);
+}
+END_TEST
+
+START_TEST (test_adc_reset)
+{
+    //make sure the carry bit is reset if the result of ADC doesn't
+    //result in a further carry
+    cs->reg[0] = 0x08;
+    cs->reg[1] = 0x07;
+    cs->fl.cy = 1;
+    cs->memory[0] = 0x88;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[0], 0x10);
+    ck_assert_int_eq(cs->fl.cy, 0);
+}
+END_TEST
 
 START_TEST (test_basic_sub)
 {
@@ -136,6 +165,33 @@ START_TEST (test_subi) {
     ck_assert_int_eq(cs->reg[0], 0xf0);
     ck_assert_int_eq(cs->pc, 2);
 }
+END_TEST
+
+START_TEST (test_sbb_set)
+{
+    //sub with borrow, result still negative
+    cs->reg[0] = 0x07;
+    cs->reg[1] = 0x07;
+    cs->fl.cy = 1;
+    cs->memory[0] = 0x98;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[0], 0xff);
+    ck_assert_int_eq(cs->fl.cy, 1);
+}
+END_TEST
+
+START_TEST (test_sbb_reset)
+{
+    //sub with borrow, result now positive
+    cs->reg[0] = 0x11;
+    cs->reg[0] = 0x0f;
+    cs->fl.cy = 1;
+    cs->memory[0] = 0x98;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[0], 0x01);
+    ck_assert_int_eq(cs->fl.cy, 0);
+}
+END_TEST
 
 Suite *cpu_suite(void) {
     Suite *s;
@@ -151,11 +207,15 @@ Suite *cpu_suite(void) {
     tcase_add_test(tc_arithmetic, test_add_aux_carry);
     tcase_add_test(tc_arithmetic, test_add_parity);
     tcase_add_test(tc_arithmetic, test_adi);
+    tcase_add_test(tc_arithmetic, test_adc_set);
+    tcase_add_test(tc_arithmetic, test_adc_reset);
     tcase_add_test(tc_arithmetic, test_basic_sub);
     tcase_add_test(tc_arithmetic, test_sub_greater);
     tcase_add_test(tc_arithmetic, test_sub_self_reset);
     tcase_add_test(tc_arithmetic, test_sub_aux_carry);
     tcase_add_test(tc_arithmetic, test_subi);
+    tcase_add_test(tc_arithmetic, test_sbb_set);
+    tcase_add_test(tc_arithmetic, test_sbb_reset);
 
     suite_add_tcase(s, tc_arithmetic);
 

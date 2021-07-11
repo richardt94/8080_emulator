@@ -124,6 +124,23 @@ int executeOp(CPUState *state) {
             set_result(res, state);
             break;
         }
+        //ADC, ACI
+        case 0x88: case 0x89: case 0x8a: case 0x8b:
+        case 0x8c: case 0x8d: case 0x8e: case 0x8f:
+        case 0xce:
+        {
+            byte r2;
+            //immediate
+            if (*opcode == 0xce) {
+                r2 = opcode[1]; state->pc++;
+            } else {
+                r2 = arithmeticOperand(*opcode - 0x88, state);
+            }
+            uint16_t res = (uint16_t) state->reg[0] + (uint16_t) r2 + state->fl.cy;
+            state->fl.ac = (state->reg[0] & 0x0f) + (r2 & 0x0f) + state->fl.cy > 0x0f;
+            set_result(res, state);
+            break;
+        }
         //SUB, SUBI
         case 0x90: case 0x91: case 0x92: case 0x93:
         case 0x94: case 0x95: case 0x96: case 0x97:
