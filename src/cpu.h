@@ -87,6 +87,7 @@ uint8_t parity(byte b) {
 }
 
 void set_result(uint16_t res, CPUState *state) {
+    //set accumulator value and flags
     state->fl.z = (res & 0xff) == 0; //zero
     state->fl.s = (res & 0x80) != 0; //sign
     state->fl.cy = res > 0xff; //carry (result > 255)
@@ -141,7 +142,7 @@ int executeOp(CPUState *state) {
             set_result(res, state);
             break;
         }
-        //SUB, SUBI
+        //SUB, SUI
         case 0x90: case 0x91: case 0x92: case 0x93:
         case 0x94: case 0x95: case 0x96: case 0x97:
         case 0xd6:
@@ -160,6 +161,74 @@ int executeOp(CPUState *state) {
             set_result(res, state);
             //carry flag works opposite to addition on 8080 (but not aux carry)
             state->fl.cy = !state->fl.cy;
+            break;
+        }
+        //SBB, SBI
+        case 0x98: case 0x99: case 0x9a: case 0x9b:
+        case 0x9c: case 0x9d: case 0x9e: case 0x9f:
+        case 0xde:
+        {
+            //from the 8080 programmers' manual:
+            //the carry is internally added to the
+            //second operand and subtraction then performed with normal
+            //two's complement rules.
+            byte r2;
+            if (*opcode == 0xde) {
+                r2 = opcode[1]; state->pc++;
+            } else {
+                r2 = arithmeticOperand(*opcode - 0x98, state);
+            }
+            r2 += state->fl.cy;
+            r2 = -(unsigned int) r2;
+            uint16_t res = (uint16_t) state->reg[0] + (uint16_t) r2;
+            state->fl.ac = (state->reg[0] & 0x0f) + (r2 & 0x0f) > 0x0f;
+            set_result(res, state);
+            state->fl.cy = !state->fl.cy;
+            break;
+        }
+        //ANA, ANI
+        case 0xa0: case 0xa1: case 0xa2: case 0xa3:
+        case 0xa4: case 0xa5: case 0xa6: case 0xa7:
+        case 0xe6:
+        {
+            byte r2;
+            if (*opcode == 0xe6) {
+                r2 = opcode[1]; state->pc++;
+            } else {
+                r2 = arithmeticOperand(*opcode - 0xa0, state);
+            }
+            uint16_t res = (uint16_t) state->reg[0] & (uint16_t) r2;
+            set_result(res, state);
+            break;
+        }
+        //XRA, XRI
+        case 0xa8: case 0xa9: case 0xaa: case 0xab:
+        case 0xac: case 0xad: case 0xae: case 0xaf:
+        case 0xee:
+        {
+            byte r2;
+            if (*opcode == 0xee) {
+                r2 = opcode[1]; state->pc++;
+            } else {
+                r2 = arithmeticOperand(*opcode - 0xa8, state);
+            }
+            uint16_t res = (uint16_t) state->reg[0] ^ (uint16_t) r2;
+            set_result(res, state);
+            break;
+        }
+        //ORA, ORI
+        case 0xb0: case 0xb1: case 0xb2: case 0xb3:
+        case 0xb4: case 0xb5: case 0xb6: case 0xb7:
+        case 0xf6:
+        {
+            byte r2;
+            if (*opcode == 0xf6) {
+                r2 = opcode[1]; state->pc++;
+            } else {
+                r2 = arithmeticOperand(*opcode - 0xb0, state);
+            }
+            uint16_t res = (uint16_t) state->reg[0] | (uint16_t) r2;
+            set_result(res, state);
             break;
         }
         //HLT

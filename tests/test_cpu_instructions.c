@@ -184,7 +184,7 @@ START_TEST (test_sbb_reset)
 {
     //sub with borrow, result now positive
     cs->reg[0] = 0x11;
-    cs->reg[0] = 0x0f;
+    cs->reg[1] = 0x0f;
     cs->fl.cy = 1;
     cs->memory[0] = 0x98;
     ck_assert_int_eq(executeOp(cs), 0);
@@ -193,13 +193,58 @@ START_TEST (test_sbb_reset)
 }
 END_TEST
 
+START_TEST (test_ana)
+{
+    cs->reg[0] = 0xfc;
+    cs->reg[1] = 0x0f;
+    cs->memory[0] = 0xa0;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[0], 0x0c);
+    ck_assert_int_eq(cs->fl.cy, 0);
+    ck_assert_int_eq(cs->fl.z, 0);
+    ck_assert_int_eq(cs->fl.s, 0);
+    ck_assert_int_eq(cs->fl.p, 1);
+}
+END_TEST
+
+START_TEST (test_xra)
+{
+    cs->reg[0] = 0x5c;
+    cs->reg[1] = 0x78;
+    cs->memory[0] = 0xa8;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[0], 0x24);
+    ck_assert_int_eq(cs->fl.cy, 0);
+    ck_assert_int_eq(cs->fl.z, 0);
+    ck_assert_int_eq(cs->fl.s, 0);
+    ck_assert_int_eq(cs->fl.p, 1);
+}
+END_TEST
+
+START_TEST (test_ora)
+{
+    cs->reg[0] = 0x33;
+    cs->reg[1] = 0x0f;
+    cs->memory[0] = 0xb0;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[0], 0x3f);
+    ck_assert_int_eq(cs->fl.cy, 0);
+    ck_assert_int_eq(cs->fl.z, 0);
+    ck_assert_int_eq(cs->fl.s, 0);
+    ck_assert_int_eq(cs->fl.p, 1);
+}
+END_TEST
+
 Suite *cpu_suite(void) {
     Suite *s;
     TCase *tc_arithmetic;
+    TCase *tc_bitwise;
 
     s = suite_create("CPU Instructions");
     tc_arithmetic = tcase_create("Arithmetic instructions");
+    tc_bitwise = tcase_create("Bitwise logic");
     tcase_add_checked_fixture(tc_arithmetic, state_setup, state_teardown);
+    tcase_add_checked_fixture(tc_bitwise, state_setup, state_teardown);
 
     tcase_add_test(tc_arithmetic, test_basic_add);
     tcase_add_test(tc_arithmetic, test_add_from_memory);
@@ -217,7 +262,12 @@ Suite *cpu_suite(void) {
     tcase_add_test(tc_arithmetic, test_sbb_set);
     tcase_add_test(tc_arithmetic, test_sbb_reset);
 
+    tcase_add_test(tc_bitwise, test_ana);
+    tcase_add_test(tc_bitwise, test_xra);
+    tcase_add_test(tc_bitwise, test_ora);
+
     suite_add_tcase(s, tc_arithmetic);
+    suite_add_tcase(s, tc_bitwise);
 
     return s;
 }
