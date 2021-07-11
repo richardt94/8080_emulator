@@ -29,7 +29,7 @@ typedef struct CPUState {
     byte int_enable;
 } CPUState;
 
-CPUState* newState() {
+CPUState *newState() {
     CPUState* cs = malloc(sizeof(CPUState));
     cs->fl.z = 0;
     cs->fl.s = 0;
@@ -86,12 +86,16 @@ uint8_t parity(byte b) {
     return !(set % 2);
 }
 
-void set_result(uint16_t res, CPUState *state) {
-    //set accumulator value and flags
+void set_flags(uint16_t res, CPUState *state) {
     state->fl.z = (res & 0xff) == 0; //zero
     state->fl.s = (res & 0x80) != 0; //sign
     state->fl.cy = res > 0xff; //carry (result > 255)
     state->fl.p = parity(res & 0xff);
+}
+
+void set_result(uint16_t res, CPUState *state) {
+    //set accumulator value and flags
+    set_flags(res, state);
     state->reg[0] = res & 0xff; //res is always sent to A (the accumulator)
 }
 
@@ -229,6 +233,27 @@ int executeOp(CPUState *state) {
             }
             uint16_t res = (uint16_t) state->reg[0] | (uint16_t) r2;
             set_result(res, state);
+            break;
+        }
+        //CMP, CPI
+        case 0xb8: case 0xb9: case 0xba: case 0xbb:
+        case 0xbc: case 0xbd: case 0xbe: case 0xbf:
+        case 0xfe:
+        {
+            //CMP does not affect the accumulator.
+            //arg is subtracted from accumulator internally to
+            //set flags.
+            byte r2;
+            if (*opcode == 0xf6) {
+                r2 = opcode[1]; state->pc++;
+            } else {
+                r2 = arithmeticOperand(*opcode - 0xb8, state);
+            }
+            r2 = -(unsigned int) r2;
+            uint16_t res = (uint16_t) state->reg[0] + (uint16_t) r2;
+            state->fl.ac = (state->reg[0] & 0x0f) + (r2 & 0x0f) > 0x0f;
+            set_flags(res, state);
+            state->fl.cy = !state->fl.cy;
             break;
         }
         //HLT

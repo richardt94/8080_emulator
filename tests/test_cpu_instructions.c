@@ -235,16 +235,40 @@ START_TEST (test_ora)
 }
 END_TEST
 
+START_TEST (test_cmp)
+{
+    cs->reg[0] = 0x02;
+    cs->reg[1] = 0x05;
+    cs->memory[0] = 0xb8;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[0], 0x02);
+    ck_assert_int_eq(cs->fl.cy, 1);
+    ck_assert_int_eq(cs->fl.z, 0);
+}
+END_TEST
+
+START_TEST (test_cmp_opp_sign)
+{
+    cs->reg[0] = 0xe5;
+    cs->reg[1] = 0x05;
+    cs->memory[0] = 0xb8;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[0], 0xe5);
+    ck_assert_int_eq(cs->fl.cy, 0);
+    ck_assert_int_eq(cs->fl.z, 0);
+}
+END_TEST
+
 Suite *cpu_suite(void) {
     Suite *s;
     TCase *tc_arithmetic;
-    TCase *tc_bitwise;
+    TCase *tc_logcomp;
 
     s = suite_create("CPU Instructions");
     tc_arithmetic = tcase_create("Arithmetic instructions");
-    tc_bitwise = tcase_create("Bitwise logic");
+    tc_logcomp = tcase_create("Logical comparisons");
     tcase_add_checked_fixture(tc_arithmetic, state_setup, state_teardown);
-    tcase_add_checked_fixture(tc_bitwise, state_setup, state_teardown);
+    tcase_add_checked_fixture(tc_logcomp, state_setup, state_teardown);
 
     tcase_add_test(tc_arithmetic, test_basic_add);
     tcase_add_test(tc_arithmetic, test_add_from_memory);
@@ -262,12 +286,14 @@ Suite *cpu_suite(void) {
     tcase_add_test(tc_arithmetic, test_sbb_set);
     tcase_add_test(tc_arithmetic, test_sbb_reset);
 
-    tcase_add_test(tc_bitwise, test_ana);
-    tcase_add_test(tc_bitwise, test_xra);
-    tcase_add_test(tc_bitwise, test_ora);
+    tcase_add_test(tc_logcomp, test_ana);
+    tcase_add_test(tc_logcomp, test_xra);
+    tcase_add_test(tc_logcomp, test_ora);
+    tcase_add_test(tc_logcomp, test_cmp);
+    tcase_add_test(tc_logcomp, test_cmp_opp_sign);
 
     suite_add_tcase(s, tc_arithmetic);
-    suite_add_tcase(s, tc_bitwise);
+    suite_add_tcase(s, tc_logcomp);
 
     return s;
 }
