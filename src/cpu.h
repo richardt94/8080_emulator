@@ -169,6 +169,8 @@ int executeOp(CPUState *state) {
             }
             break;
         }
+        //CMA
+        case 0x2f: state->reg[0] = ~state->reg[0]; break;
         //ADD, ADI
         case 0x80: case 0x81: case 0x82: case 0x83:
         case 0x84: case 0x85: case 0x86: case 0x87:

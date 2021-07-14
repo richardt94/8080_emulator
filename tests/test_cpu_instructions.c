@@ -73,6 +73,21 @@ START_TEST (test_dcr_mem)
 }
 END_TEST
 
+START_TEST (test_cma)
+{
+    cs->memory[0] = 0x2f;
+    cs->reg[0] = 0x55;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[0], 0xaa);
+    //no flags affected
+    ck_assert_int_eq(cs->fl.z, 0);
+    ck_assert_int_eq(cs->fl.s, 0);
+    ck_assert_int_eq(cs->fl.p, 0);
+    ck_assert_int_eq(cs->fl.cy, 0);
+    ck_assert_int_eq(cs->fl.ac, 0);
+}
+END_TEST
+
 START_TEST (test_basic_add)
 {
     //test an ADD instruction - set the accumulator to 1
@@ -338,6 +353,7 @@ Suite *cpu_suite(void) {
     tcase_add_test(tc_single, test_inr_mem);
     tcase_add_test(tc_single, test_dcr);
     tcase_add_test(tc_single, test_dcr_mem);
+    tcase_add_test(tc_single, test_cma);
 
     tcase_add_test(tc_arithmetic, test_basic_add);
     tcase_add_test(tc_arithmetic, test_add_from_memory);
