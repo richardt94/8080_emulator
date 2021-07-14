@@ -12,6 +12,35 @@ void state_teardown(void) {
     destroyState(cs);
 }
 
+START_TEST (test_inr)
+{
+    //increment single register
+    cs->reg[1] = 0x0e;
+    cs->memory[0] = 0x04;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[1], 0x0f);
+    ck_assert_int_eq(cs->fl.z, 0);
+    ck_assert_int_eq(cs->fl.s, 0);
+    ck_assert_int_eq(cs->fl.p, 1);
+    ck_assert_int_eq(cs->fl.ac, 0);
+}
+END_TEST
+
+START_TEST (test_inr_mem)
+{
+    cs->memory[0] = 0x34;
+    cs->memory[0x0e36] = 0xff;
+    cs->reg[5] = 0x0e;
+    cs->reg[6] = 0x36;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->memory[0x0e36], 0x00);
+    ck_assert_int_eq(cs->fl.z, 1);
+    ck_assert_int_eq(cs->fl.s, 0);
+    ck_assert_int_eq(cs->fl.p, 1);
+    ck_assert_int_eq(cs->fl.ac, 1);
+}
+END_TEST
+
 START_TEST (test_basic_add)
 {
     //test an ADD instruction - set the accumulator to 1
@@ -261,14 +290,20 @@ END_TEST
 
 Suite *cpu_suite(void) {
     Suite *s;
+    TCase *tc_single;
     TCase *tc_arithmetic;
     TCase *tc_logcomp;
 
     s = suite_create("CPU Instructions");
+    tc_single = tcase_create("Single-register ops");
     tc_arithmetic = tcase_create("Arithmetic instructions");
     tc_logcomp = tcase_create("Logical comparisons");
+    tcase_add_checked_fixture(tc_single, state_setup, state_teardown);
     tcase_add_checked_fixture(tc_arithmetic, state_setup, state_teardown);
     tcase_add_checked_fixture(tc_logcomp, state_setup, state_teardown);
+
+    tcase_add_test(tc_single, test_inr);
+    tcase_add_test(tc_single, test_inr_mem);
 
     tcase_add_test(tc_arithmetic, test_basic_add);
     tcase_add_test(tc_arithmetic, test_add_from_memory);
@@ -292,6 +327,7 @@ Suite *cpu_suite(void) {
     tcase_add_test(tc_logcomp, test_cmp);
     tcase_add_test(tc_logcomp, test_cmp_opp_sign);
 
+    suite_add_tcase(s, tc_single);
     suite_add_tcase(s, tc_arithmetic);
     suite_add_tcase(s, tc_logcomp);
 

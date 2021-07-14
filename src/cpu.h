@@ -109,6 +109,35 @@ int executeOp(CPUState *state) {
         case 0x20: case 0x28: case 0x30: case 0x38:
         case 0xcb: case 0xd9: case 0xdd: case 0xed:
         case 0xfd: break;
+        //INR
+        case 0x04: case 0x0c: case 0x14: case 0x1c:
+        case 0x24: case 0x2c: case 0x34: case 0x3c:
+        {
+            int atype = (*opcode - 0x04) / 8;
+            uint16_t res;
+            int ri = -1;
+            uint16_t mem_adr = 0;
+            if (atype < 6) {
+                ri = atype + 1;
+                res = state->reg[ri];
+            } else if (atype == 7) {
+                ri = 0;
+                res = state->reg[ri];
+            } else {
+                mem_adr = state->reg[5] << 8 | state->reg[6];
+                res = state->memory[mem_adr];
+            }
+            state->fl.ac = (res & 0x0f) == 0x0f;
+            res++;
+            set_flags(res, state);
+            if (ri < 0) {
+                state->memory[mem_adr] = res & 0xff;
+            } else {
+                state->reg[ri] = res & 0xff;
+            }
+            break;
+        }
+
         //ADD, ADI
         case 0x80: case 0x81: case 0x82: case 0x83:
         case 0x84: case 0x85: case 0x86: case 0x87:
