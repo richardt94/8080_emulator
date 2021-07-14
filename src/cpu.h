@@ -137,7 +137,38 @@ int executeOp(CPUState *state) {
             }
             break;
         }
-
+        //DCR
+        case 0x05: case 0x0d: case 0x15: case 0x1d:
+        case 0x25: case 0x2d: case 0x35: case 0x3d:
+        {
+            int atype = (*opcode - 0x05) / 8;
+            uint16_t res;
+            int ri = -1;
+            uint16_t mem_adr = 0;
+            if (atype < 6) {
+                ri = atype + 1;
+                res = state->reg[ri];
+            } else if (atype == 7) {
+                ri = 0;
+                res = state->reg[ri];
+            } else {
+                mem_adr = state->reg[5] << 8 | state->reg[6];
+                res = state->memory[mem_adr];
+            }
+            state->fl.ac = (res & 0x0f) != 0x00;
+            //I'm doing DCR with two's complement addition
+            //to set flags. This isn't documented in the
+            //assembly manual but one can only assume
+            res += 0xff;
+            set_flags(res, state);
+            state->fl.cy = !state->fl.cy;
+            if (ri < 0) {
+                state->memory[mem_adr] = res & 0xff;
+            } else {
+                state->reg[ri] = res & 0xff;
+            }
+            break;
+        }
         //ADD, ADI
         case 0x80: case 0x81: case 0x82: case 0x83:
         case 0x84: case 0x85: case 0x86: case 0x87:
