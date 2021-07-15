@@ -114,7 +114,7 @@ int executeOp(CPUState *state) {
         case 0x24: case 0x2c: case 0x34: case 0x3c:
         {
             int atype = (*opcode - 0x04) / 8;
-            uint16_t res;
+            byte res;
             int ri = -1;
             uint16_t mem_adr = 0;
             if (atype < 6) {
@@ -129,11 +129,13 @@ int executeOp(CPUState *state) {
             }
             state->fl.ac = (res & 0x0f) == 0x0f;
             res++;
+            //INR does not affect carry. this is implicit
+            //as res (byte) will overflow when there is a carry.
             set_flags(res, state);
             if (ri < 0) {
-                state->memory[mem_adr] = res & 0xff;
+                state->memory[mem_adr] = res;
             } else {
-                state->reg[ri] = res & 0xff;
+                state->reg[ri] = res;
             }
             break;
         }
@@ -142,7 +144,7 @@ int executeOp(CPUState *state) {
         case 0x25: case 0x2d: case 0x35: case 0x3d:
         {
             int atype = (*opcode - 0x05) / 8;
-            uint16_t res;
+            byte res;
             int ri = -1;
             uint16_t mem_adr = 0;
             if (atype < 6) {
@@ -156,16 +158,12 @@ int executeOp(CPUState *state) {
                 res = state->memory[mem_adr];
             }
             state->fl.ac = (res & 0x0f) != 0x00;
-            //I'm doing DCR with two's complement addition
-            //to set flags. This isn't documented in the
-            //assembly manual but one can only assume
-            res += 0xff;
+            res--;
             set_flags(res, state);
-            state->fl.cy = !state->fl.cy;
             if (ri < 0) {
-                state->memory[mem_adr] = res & 0xff;
+                state->memory[mem_adr] = res;
             } else {
-                state->reg[ri] = res & 0xff;
+                state->reg[ri] = res;
             }
             break;
         }

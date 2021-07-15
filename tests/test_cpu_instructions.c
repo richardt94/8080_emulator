@@ -38,7 +38,7 @@ START_TEST (test_inr_mem)
     ck_assert_int_eq(cs->fl.z, 1);
     ck_assert_int_eq(cs->fl.s, 0);
     ck_assert_int_eq(cs->fl.p, 1);
-    ck_assert_int_eq(cs->fl.cy, 1);
+    ck_assert_int_eq(cs->fl.cy, 0);
     ck_assert_int_eq(cs->fl.ac, 1);
 }
 END_TEST
@@ -68,7 +68,7 @@ START_TEST (test_dcr_mem)
     ck_assert_int_eq(cs->fl.z, 0);
     ck_assert_int_eq(cs->fl.s, 1);
     ck_assert_int_eq(cs->fl.p, 1);
-    ck_assert_int_eq(cs->fl.cy, 1);
+    ck_assert_int_eq(cs->fl.cy, 0);
     ck_assert_int_eq(cs->fl.ac, 0);
 }
 END_TEST
