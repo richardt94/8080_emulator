@@ -73,6 +73,20 @@ START_TEST (test_dcr_mem)
 }
 END_TEST
 
+START_TEST (test_daa)
+{
+    cs->memory[0] = 0x27;
+    cs->reg[0] = 0x9b;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[0], 0x01);
+    ck_assert_int_eq(cs->fl.z, 0);
+    ck_assert_int_eq(cs->fl.s, 0);
+    ck_assert_int_eq(cs->fl.p, 0);
+    ck_assert_int_eq(cs->fl.cy, 1);
+    ck_assert_int_eq(cs->fl.ac, 1);
+}
+END_TEST
+
 START_TEST (test_cma)
 {
     cs->memory[0] = 0x2f;
@@ -353,6 +367,7 @@ Suite *cpu_suite(void) {
     tcase_add_test(tc_single, test_inr_mem);
     tcase_add_test(tc_single, test_dcr);
     tcase_add_test(tc_single, test_dcr_mem);
+    tcase_add_test(tc_single, test_daa);
     tcase_add_test(tc_single, test_cma);
 
     tcase_add_test(tc_arithmetic, test_basic_add);

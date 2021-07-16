@@ -167,6 +167,19 @@ int executeOp(CPUState *state) {
             }
             break;
         }
+        //DAA
+        case 0x27:
+        {
+            uint16_t acc = state->reg[0];
+            if (acc & 0x0f > 0x9 || state->fl.ac) {
+                if (acc > 0x09) state->fl.ac = 1;
+                else state->fl.ac = 0;
+                acc += 0x06;
+            }
+            if (acc >= 0xa0) acc += 0x60;
+            set_result(acc, state);
+            break;
+        }
         //CMA
         case 0x2f: state->reg[0] = ~state->reg[0]; break;
         //ADD, ADI
