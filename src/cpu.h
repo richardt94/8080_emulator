@@ -182,6 +182,53 @@ int executeOp(CPUState *state) {
         }
         //CMA
         case 0x2f: state->reg[0] = ~state->reg[0]; break;
+        //MOV
+        case 0x40: case 0x41: case 0x42: case 0x43:
+        case 0x44: case 0x45: case 0x46: case 0x47:
+        case 0x48: case 0x49: case 0x4a: case 0x4b:
+        case 0x4c: case 0x4d: case 0x4e: case 0x4f:
+        case 0x50: case 0x51: case 0x52: case 0x53:
+        case 0x54: case 0x55: case 0x56: case 0x57:
+        case 0x58: case 0x59: case 0x5a: case 0x5b:
+        case 0x5c: case 0x5d: case 0x5e: case 0x5f:
+        case 0x60: case 0x61: case 0x62: case 0x63:
+        case 0x64: case 0x65: case 0x66: case 0x67:
+        case 0x68: case 0x69: case 0x6a: case 0x6b:
+        case 0x6c: case 0x6d: case 0x6e: case 0x6f:
+        case 0x70: case 0x71: case 0x72: case 0x73:
+        case 0x74: case 0x75: case 0x77:
+        case 0x78: case 0x79: case 0x7a: case 0x7b:
+        case 0x7c: case 0x7d: case 0x7e: case 0x7f:
+        {
+            int srctype = *opcode & 0x07;
+            byte data = arithmeticOperand(srctype, state);
+            int dsttype = (*opcode & 0x38) / 8;
+            if (dsttype < 6) {
+                state->reg[dsttype + 1] = data;
+            } else if (dsttype == 7) {
+                state->reg[0] = data;
+            } else {
+                int mem_adr = state->reg[5] << 8 | state->reg[6];
+                state->memory[mem_adr] = data;
+            }
+            break;
+        }
+        //STAX
+        case 0x02: case 0x12:
+        {
+            int base_reg = 1 + 2 * (*opcode == 0x12);
+            int mem_adr = state->reg[base_reg] << 8 | state->reg[base_reg + 1];
+            state->memory[mem_adr] = state->reg[0];
+            break;
+        }
+        //LDAX
+        case 0x0A: case 0x1A:
+        {
+            int base_reg = 1 + 2 * (*opcode == 0x1A);
+            int mem_adr = state->reg[base_reg] << 8 | state->reg[base_reg + 1];
+            state->reg[0] = state->memory[mem_adr];
+            break;
+        }
         //ADD, ADI
         case 0x80: case 0x81: case 0x82: case 0x83:
         case 0x84: case 0x85: case 0x86: case 0x87:

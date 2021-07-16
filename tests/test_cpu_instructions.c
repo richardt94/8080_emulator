@@ -102,6 +102,70 @@ START_TEST (test_cma)
 }
 END_TEST
 
+START_TEST (test_mov)
+{
+    cs->memory[0] = 0x41;
+    cs->reg[2] = 0x37;
+    //source unchanged, no flags affected
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[1], 0x37);
+    ck_assert_int_eq(cs->reg[2], 0x37);
+    ck_assert_int_eq(cs->fl.z, 0);
+    ck_assert_int_eq(cs->fl.s, 0);
+    ck_assert_int_eq(cs->fl.p, 0);
+    ck_assert_int_eq(cs->fl.cy, 0);
+    ck_assert_int_eq(cs->fl.ac, 0);
+}
+END_TEST
+
+START_TEST (test_mov_from_mem)
+{
+    cs->memory[0] = 0x46;
+    cs->memory[0x0f98] = 0x24;
+    cs->reg[5] = 0x0f;
+    cs->reg[6] = 0x98;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[1], 0x24);
+    ck_assert_int_eq(cs->memory[0x0f98], 0x24);
+}
+END_TEST
+
+START_TEST (test_mov_to_mem)
+{
+    cs->memory[0] = 0x70;
+    cs->reg[5] = 0x11;
+    cs->reg[6] = 0x22;
+    cs->reg[1] = 0xce;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[1], 0xce);
+    ck_assert_int_eq(cs->memory[0x1122], 0xce);
+}
+END_TEST
+
+START_TEST (test_stax)
+{
+    cs->memory[0] = 0x02;
+    cs->reg[0] = 0x4f;
+    cs->reg[1] = 0x20;
+    cs->reg[2] = 0xbb;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->memory[0x20bb], 0x4f);
+    ck_assert_int_eq(cs->reg[0], 0x4f);
+}
+END_TEST
+
+START_TEST (test_ldax)
+{
+    cs->memory[0] = 0x1A;
+    cs->memory[0x01b3] = 0xf4;
+    cs->reg[3] = 0x01;
+    cs->reg[4] = 0xb3;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->memory[0x01b3], 0xf4);
+    ck_assert_int_eq(cs->reg[0], 0xf4);
+}
+END_TEST
+
 START_TEST (test_basic_add)
 {
     //test an ADD instruction - set the accumulator to 1
@@ -352,14 +416,17 @@ END_TEST
 Suite *cpu_suite(void) {
     Suite *s;
     TCase *tc_single;
+    TCase *tc_transfer;
     TCase *tc_arithmetic;
     TCase *tc_logcomp;
 
     s = suite_create("CPU Instructions");
     tc_single = tcase_create("Single-register ops");
+    tc_transfer = tcase_create("Data transfer instructions");
     tc_arithmetic = tcase_create("Arithmetic instructions");
     tc_logcomp = tcase_create("Logical comparisons");
     tcase_add_checked_fixture(tc_single, state_setup, state_teardown);
+    tcase_add_checked_fixture(tc_transfer, state_setup, state_teardown);
     tcase_add_checked_fixture(tc_arithmetic, state_setup, state_teardown);
     tcase_add_checked_fixture(tc_logcomp, state_setup, state_teardown);
 
@@ -369,6 +436,12 @@ Suite *cpu_suite(void) {
     tcase_add_test(tc_single, test_dcr_mem);
     tcase_add_test(tc_single, test_daa);
     tcase_add_test(tc_single, test_cma);
+
+    tcase_add_test(tc_transfer, test_mov);
+    tcase_add_test(tc_transfer, test_mov_from_mem);
+    tcase_add_test(tc_transfer, test_mov_to_mem);
+    tcase_add_test(tc_transfer, test_stax);
+    tcase_add_test(tc_transfer, test_ldax);
 
     tcase_add_test(tc_arithmetic, test_basic_add);
     tcase_add_test(tc_arithmetic, test_add_from_memory);
@@ -393,6 +466,7 @@ Suite *cpu_suite(void) {
     tcase_add_test(tc_logcomp, test_cmp_opp_sign);
 
     suite_add_tcase(s, tc_single);
+    suite_add_tcase(s, tc_transfer);
     suite_add_tcase(s, tc_arithmetic);
     suite_add_tcase(s, tc_logcomp);
 
