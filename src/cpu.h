@@ -376,6 +376,40 @@ int executeOp(CPUState *state) {
             state->fl.cy = !state->fl.cy;
             break;
         }
+        //RLC
+        case 0x07:
+        {
+            state->fl.cy = state->reg[0] >= 0x80;
+            state->reg[0] <<= 1;
+            state->reg[0] += state->fl.cy;
+            break;
+        }
+        //RRC
+        case 0x0f:
+        {
+            state->fl.cy = state->reg[0] & 0x01;
+            state->reg[0] >>= 1;
+            state->reg[0] += state->fl.cy * 0x80;
+            break;
+        }
+        //RAL
+        case 0x17:
+        {
+            int tmp = state->fl.cy;
+            state->fl.cy = state->reg[0] >= 0x80;
+            state->reg[0] <<= 1;
+            state->reg[0] += tmp;
+            break;
+        }
+        //RAR
+        case 0x1f:
+        {
+            int tmp = state->fl.cy;
+            state->fl.cy = state->reg[0] & 0x01;
+            state->reg[0] >>= 1;
+            state->reg[0] += tmp * 0x80;
+            break;
+        }
         //HLT
         case 0x76: return 1; break;
         default: unknownOp(state); break;

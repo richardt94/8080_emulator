@@ -413,22 +413,66 @@ START_TEST (test_cmp_opp_sign)
 }
 END_TEST
 
+START_TEST (test_rlc)
+{
+    cs->memory[0] = 0x07;
+    cs->reg[0] = 0xf2;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[0], 0xe5);
+    ck_assert_int_eq(cs->fl.cy, 1);
+}
+END_TEST
+
+START_TEST (test_rrc)
+{
+    cs->memory[0] = 0x0f;
+    cs->reg[0] = 0xf2;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[0], 0x79);
+    ck_assert_int_eq(cs->fl.cy, 0);
+}
+END_TEST
+
+START_TEST (test_ral)
+{
+    cs->memory[0] = 0x17;
+    cs->reg[0] = 0xb5;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[0], 0x6a);
+    ck_assert_int_eq(cs->fl.cy, 1);
+}
+END_TEST
+
+START_TEST (test_rar)
+{
+    cs->memory[0] = 0x1f;
+    cs->reg[0] = 0x6a;
+    cs->fl.cy = 1;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[0], 0xb5);
+    ck_assert_int_eq(cs->fl.cy, 0);
+}
+END_TEST
+
 Suite *cpu_suite(void) {
     Suite *s;
     TCase *tc_single;
     TCase *tc_transfer;
     TCase *tc_arithmetic;
     TCase *tc_logcomp;
+    TCase *tc_rotate;
 
     s = suite_create("CPU Instructions");
     tc_single = tcase_create("Single-register ops");
     tc_transfer = tcase_create("Data transfer instructions");
     tc_arithmetic = tcase_create("Arithmetic instructions");
     tc_logcomp = tcase_create("Logical comparisons");
+    tc_rotate = tcase_create("Accumulator rotations");
     tcase_add_checked_fixture(tc_single, state_setup, state_teardown);
     tcase_add_checked_fixture(tc_transfer, state_setup, state_teardown);
     tcase_add_checked_fixture(tc_arithmetic, state_setup, state_teardown);
     tcase_add_checked_fixture(tc_logcomp, state_setup, state_teardown);
+    tcase_add_checked_fixture(tc_rotate, state_setup, state_teardown);
 
     tcase_add_test(tc_single, test_inr);
     tcase_add_test(tc_single, test_inr_mem);
@@ -465,10 +509,16 @@ Suite *cpu_suite(void) {
     tcase_add_test(tc_logcomp, test_cmp);
     tcase_add_test(tc_logcomp, test_cmp_opp_sign);
 
+    tcase_add_test(tc_rotate, test_rlc);
+    tcase_add_test(tc_rotate, test_rrc);
+    tcase_add_test(tc_rotate, test_ral);
+    tcase_add_test(tc_rotate, test_rar);
+
     suite_add_tcase(s, tc_single);
     suite_add_tcase(s, tc_transfer);
     suite_add_tcase(s, tc_arithmetic);
     suite_add_tcase(s, tc_logcomp);
+    suite_add_tcase(s, tc_rotate);
 
     return s;
 }
