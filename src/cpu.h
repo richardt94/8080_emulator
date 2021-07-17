@@ -22,8 +22,8 @@ typedef struct CPUState {
     //registers (order a, b, c, d, e, h, l)
     byte reg[7];
 
-    byte sp; //stack pointer
-    byte pc; //program counter/instruction pointer
+    uint16_t sp; //stack pointer
+    uint16_t pc; //program counter/instruction pointer
     byte *memory; //RAM
     Flags fl;
     byte int_enable;
@@ -41,7 +41,7 @@ CPUState *newState() {
     for (int r = 0; r < 7; r++) {
         cs->reg[r] = 0;
     }
-    cs->sp = 0;
+    cs->sp = 8192; //stack at end of memory
     cs->pc = 0;
     cs->int_enable = 0;
 
@@ -408,6 +408,46 @@ int executeOp(CPUState *state) {
             state->fl.cy = state->reg[0] & 0x01;
             state->reg[0] >>= 1;
             state->reg[0] += tmp * 0x80;
+            break;
+        }
+        //PUSH
+        case 0xc5: case 0xd5: case 0xe5: case 0xf5:
+        {
+            int r1 = 2*((*opcode - 0xc5)/0x10) + 1;
+            state->sp -= 2;
+            if (r1 < 7) {
+                state->memory[state->sp + 1] = state->reg[r1];
+                state->memory[state->sp] = state->reg[r1 + 1];
+            } else { //PUSH PSW
+                //formatting of the flag storage in memory
+                //(see 8080 asm programmer's manual)
+                byte flagbyte = state->fl.cy + 2 + (state->fl.p << 2) + 
+                                (state->fl.ac << 4) + (state->fl.z << 6) +
+                                (state->fl.s << 7);
+                state->memory[state->sp + 1] = state->reg[0];
+                state->memory[state->sp] = flagbyte;
+            }
+            break;
+        }
+        //POP
+        case 0xc1: case 0xd1: case 0xe1: case 0xf1:
+        {
+            int r1 = 2*((*opcode - 0xc1)/0x10) + 1;
+            if (r1 < 7) {
+                state->reg[r1] = state->memory[state->sp + 1];
+                state->reg[r1 + 1] = state->memory[state->sp];
+            } else { //POP PSW
+                //formatting of the flag storage in memory
+                //(see 8080 asm programmer's manual)
+                byte flagbyte = state->memory[state->sp];
+                state->fl.cy = flagbyte & 0x01;
+                state->fl.p = (flagbyte & 0x04) > 0;
+                state->fl.ac = (flagbyte & 0x10) > 0;
+                state->fl.z = (flagbyte & 0x40) > 0;
+                state->fl.s = (flagbyte & 0x80) > 0;
+                state->reg[0] = state->memory[state->sp + 1];
+            }
+            state->sp += 2;
             break;
         }
         //HLT

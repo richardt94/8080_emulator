@@ -454,6 +454,66 @@ START_TEST (test_rar)
 }
 END_TEST
 
+START_TEST (test_push)
+{
+    cs->memory[0] = 0xc5;
+    cs->reg[1] = 0x11;
+    cs->reg[2] = 0x22;
+    int old_sp = cs->sp;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(old_sp - cs->sp, 2);
+    ck_assert_int_eq(cs->memory[cs->sp], 0x22);
+    ck_assert_int_eq(cs->memory[cs->sp+1], 0x11);
+}
+END_TEST
+
+START_TEST (test_push_psw)
+{
+    cs->memory[0] = 0xf5;
+    cs->fl.cy = 1;
+    cs->fl.z = 1;
+    cs->fl.p = 1;
+    cs->reg[0] = 0x1f;
+    int old_sp = cs->sp;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(old_sp - cs->sp, 2);
+    ck_assert_int_eq(cs->memory[cs->sp], 0x47);
+    ck_assert_int_eq(cs->memory[cs->sp+1], 0x1f);
+}
+END_TEST
+
+START_TEST (test_pop)
+{
+    cs->memory[0] = 0xc1;
+    cs->sp -= 2;
+    cs->memory[cs->sp] = 0x3d;
+    cs->memory[cs->sp + 1] = 0x93;
+    int old_sp = cs->sp;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->sp - old_sp, 2);
+    ck_assert_int_eq(cs->reg[1], 0x93);
+    ck_assert_int_eq(cs->reg[2], 0x3d);
+}
+END_TEST
+
+START_TEST (test_pop_psw)
+{
+    cs->memory[0] = 0xf1;
+    cs->sp -= 2;
+    cs->memory[cs->sp] = 0xc3;
+    cs->memory[cs->sp + 1] = 0xff;
+    int old_sp = cs->sp;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->sp - old_sp, 2);
+    ck_assert_int_eq(cs->reg[0], 0xff);
+    ck_assert_int_eq(cs->fl.cy, 1);
+    ck_assert_int_eq(cs->fl.p, 0);
+    ck_assert_int_eq(cs->fl.ac, 0);
+    ck_assert_int_eq(cs->fl.z, 1);
+    ck_assert_int_eq(cs->fl.s, 1);
+}
+END_TEST
+
 Suite *cpu_suite(void) {
     Suite *s;
     TCase *tc_single;
@@ -461,6 +521,7 @@ Suite *cpu_suite(void) {
     TCase *tc_arithmetic;
     TCase *tc_logcomp;
     TCase *tc_rotate;
+    TCase *tc_tworeg;
 
     s = suite_create("CPU Instructions");
     tc_single = tcase_create("Single-register ops");
@@ -468,11 +529,13 @@ Suite *cpu_suite(void) {
     tc_arithmetic = tcase_create("Arithmetic instructions");
     tc_logcomp = tcase_create("Logical comparisons");
     tc_rotate = tcase_create("Accumulator rotations");
+    tc_tworeg = tcase_create("Register pair instructions");
     tcase_add_checked_fixture(tc_single, state_setup, state_teardown);
     tcase_add_checked_fixture(tc_transfer, state_setup, state_teardown);
     tcase_add_checked_fixture(tc_arithmetic, state_setup, state_teardown);
     tcase_add_checked_fixture(tc_logcomp, state_setup, state_teardown);
     tcase_add_checked_fixture(tc_rotate, state_setup, state_teardown);
+    tcase_add_checked_fixture(tc_tworeg, state_setup, state_teardown);
 
     tcase_add_test(tc_single, test_inr);
     tcase_add_test(tc_single, test_inr_mem);
@@ -514,11 +577,17 @@ Suite *cpu_suite(void) {
     tcase_add_test(tc_rotate, test_ral);
     tcase_add_test(tc_rotate, test_rar);
 
+    tcase_add_test(tc_tworeg, test_push);
+    tcase_add_test(tc_tworeg, test_push_psw);
+    tcase_add_test(tc_tworeg, test_pop);
+    tcase_add_test(tc_tworeg, test_pop_psw);
+
     suite_add_tcase(s, tc_single);
     suite_add_tcase(s, tc_transfer);
     suite_add_tcase(s, tc_arithmetic);
     suite_add_tcase(s, tc_logcomp);
     suite_add_tcase(s, tc_rotate);
+    suite_add_tcase(s, tc_tworeg);
 
     return s;
 }
