@@ -110,6 +110,10 @@ int executeOp(CPUState *state) {
         case 0x20: case 0x28: case 0x30: case 0x38:
         case 0xcb: case 0xd9: case 0xdd: case 0xed:
         case 0xfd: break;
+        //STC
+        case 0x37: state->fl.cy = 1; break;
+        //CMC
+        case 0x3f: state->fl.cy = !state->fl.cy; break;
         //INR
         case 0x04: case 0x0c: case 0x14: case 0x1c:
         case 0x24: case 0x2c: case 0x34: case 0x3c:
@@ -556,6 +560,52 @@ int executeOp(CPUState *state) {
                 state->reg[0] = opcode[1];
             }
             state->pc++;
+            break;
+        }
+        //STA
+        case 0x32:
+        {
+            uint16_t mem_adr = opcode[2] << 8 | opcode[1];
+            if (mem_adr > state->mem_size - 1) {
+                fprintf(stderr, "Address past end of memory for STA!\n");
+                exit(1);
+            }
+            state->memory[mem_adr] = state->reg[0];
+            break;
+        }
+        //LDA
+        case 0x3a:
+        {
+            uint16_t mem_adr = opcode[2] << 8 | opcode[1];
+            if (mem_adr > state->mem_size - 1) {
+                fprintf(stderr, "Address past end of memory for LDA!\n");
+                exit(1);
+            }
+            state->reg[0] = state->memory[mem_adr];
+            break;
+        }
+        //SHLD
+        case 0x22:
+        {
+            uint16_t mem_adr = opcode[2] << 8 | opcode[1];
+            if (mem_adr > state->mem_size - 2) {
+                fprintf(stderr, "Address past end of memory for SHLD!\n");
+                exit(1);
+            }
+            state->memory[mem_adr] = state->reg[6];
+            state->memory[mem_adr + 1] = state->reg[5];
+            break;
+        }
+        //LHLD
+        case 0x2a:
+        {
+            uint16_t mem_adr = opcode[2] << 8 | opcode[1];
+            if (mem_adr > state->mem_size - 2) {
+                fprintf(stderr, "Address past end of memory for LHLD!\n");
+                exit(1);
+            }
+            state->reg[6] = state->memory[mem_adr];
+            state->reg[5] = state->memory[mem_adr + 1];
             break;
         }
         //HLT

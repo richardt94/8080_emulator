@@ -12,6 +12,25 @@ void state_teardown(void) {
     destroyState(cs);
 }
 
+START_TEST (test_stc)
+{
+    cs->memory[0] = 0x37;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->fl.cy, 1);
+}
+END_TEST
+
+START_TEST (test_cmc)
+{
+    cs->memory[0] = 0x3f;
+    cs->memory[1] = 0x3f;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->fl.cy, 1);
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->fl.cy, 0);
+}
+END_TEST
+
 START_TEST (test_inr)
 {
     //increment single register
@@ -676,8 +695,58 @@ START_TEST (test_mvi_mem)
 }
 END_TEST
 
+START_TEST (test_sta)
+{
+    cs->memory[0] = 0x32;
+    cs->memory[1] = 0xb3;
+    cs->memory[2] = 0x05;
+    cs->reg[0] = 0x12;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->memory[0x05b3], 0x12);
+}
+END_TEST
+
+START_TEST (test_lda)
+{
+    cs->memory[0] = 0x3a;
+    cs->memory[1] = 0xb3;
+    cs->memory[2] = 0x05;
+    cs->memory[0x05b3] = 0x12;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[0], 0x12);
+}
+END_TEST
+
+START_TEST (test_shld)
+{
+    cs->memory[0] = 0x22;
+    cs->memory[1] = 0x0a;
+    cs->memory[2] = 0x01;
+    cs->reg[5] = 0xae;
+    cs->reg[6] = 0x29;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->memory[0x010a], 0x29);
+    ck_assert_int_eq(cs->memory[0x010b], 0xae);
+}
+END_TEST
+
+START_TEST (test_lhld)
+{
+    cs->memory[0] = 0x2a;
+    cs->memory[1] = 0x5b;
+    cs->memory[2] = 0x02;
+    cs->memory[0x025b] = 0xff;
+    cs->memory[0x025c] = 0x03;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[5], 0x03);
+    ck_assert_int_eq(cs->reg[6], 0xff);
+}
+END_TEST
+
 Suite *cpu_suite(void) {
     Suite *s;
+
+    TCase *tc_carry;
     TCase *tc_single;
     TCase *tc_transfer;
     TCase *tc_arithmetic;
@@ -685,9 +754,11 @@ Suite *cpu_suite(void) {
     TCase *tc_rotate;
     TCase *tc_tworeg;
     TCase *tc_immediate;
+    TCase *tc_direct;
 
     s = suite_create("CPU Instructions");
 
+    tc_carry = tcase_create("Carry bit instructions");
     tc_single = tcase_create("Single-register ops");
     tc_transfer = tcase_create("Data transfer instructions");
     tc_arithmetic = tcase_create("Arithmetic instructions");
@@ -695,7 +766,9 @@ Suite *cpu_suite(void) {
     tc_rotate = tcase_create("Accumulator rotations");
     tc_tworeg = tcase_create("Register pair instructions");
     tc_immediate = tcase_create("Immediate instructions");
+    tc_direct = tcase_create("Direct addressing instructions");
 
+    tcase_add_checked_fixture(tc_carry, state_setup, state_teardown);
     tcase_add_checked_fixture(tc_single, state_setup, state_teardown);
     tcase_add_checked_fixture(tc_transfer, state_setup, state_teardown);
     tcase_add_checked_fixture(tc_arithmetic, state_setup, state_teardown);
@@ -703,6 +776,10 @@ Suite *cpu_suite(void) {
     tcase_add_checked_fixture(tc_rotate, state_setup, state_teardown);
     tcase_add_checked_fixture(tc_tworeg, state_setup, state_teardown);
     tcase_add_checked_fixture(tc_immediate, state_setup, state_teardown);
+    tcase_add_checked_fixture(tc_direct, state_setup, state_teardown);
+
+    tcase_add_test(tc_carry, test_stc);
+    tcase_add_test(tc_carry, test_cmc);
 
     tcase_add_test(tc_single, test_inr);
     tcase_add_test(tc_single, test_inr_mem);
@@ -763,6 +840,12 @@ Suite *cpu_suite(void) {
     tcase_add_test(tc_immediate, test_mvi);
     tcase_add_test(tc_immediate, test_mvi_mem);
 
+    tcase_add_test(tc_direct, test_sta);
+    tcase_add_test(tc_direct, test_lda);
+    tcase_add_test(tc_direct, test_shld);
+    tcase_add_test(tc_direct, test_lhld);
+
+    suite_add_tcase(s, tc_carry);
     suite_add_tcase(s, tc_single);
     suite_add_tcase(s, tc_transfer);
     suite_add_tcase(s, tc_arithmetic);
@@ -770,6 +853,7 @@ Suite *cpu_suite(void) {
     suite_add_tcase(s, tc_rotate);
     suite_add_tcase(s, tc_tworeg);
     suite_add_tcase(s, tc_immediate);
+    suite_add_tcase(s, tc_direct);
 
     return s;
 }
