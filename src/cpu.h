@@ -27,9 +27,10 @@ typedef struct CPUState {
     byte *memory; //RAM
     Flags fl;
     byte int_enable;
+    uint16_t mem_size;
 } CPUState;
 
-CPUState *newState() {
+CPUState *newState(uint16_t mem_size) {
     CPUState* cs = malloc(sizeof(CPUState));
     cs->fl.z = 0;
     cs->fl.s = 0;
@@ -41,11 +42,11 @@ CPUState *newState() {
     for (int r = 0; r < 7; r++) {
         cs->reg[r] = 0;
     }
-    cs->sp = 8192; //stack at end of memory
     cs->pc = 0;
     cs->int_enable = 0;
 
-    cs->memory = (byte *) calloc(8192, sizeof(byte));
+    cs->memory = (byte *) calloc(mem_size, sizeof(byte));
+    cs->mem_size = mem_size;
     return cs;
 }
 
@@ -55,7 +56,7 @@ void destroyState(CPUState *cs) {
 }
 
 //handling for unimplemented ops
-void unknownOp (CPUState *state) {
+void unknownOp () {
     fprintf(stderr, "Error: unimplemented instruction. Exiting...\n");
     exit(1);
 }
@@ -413,6 +414,10 @@ int executeOp(CPUState *state) {
         //PUSH
         case 0xc5: case 0xd5: case 0xe5: case 0xf5:
         {
+            if (state->sp < 2) {
+                fprintf(stderr, "Stack overflow on PUSH!\n");
+                exit(1);
+            }
             int r1 = 2*((*opcode - 0xc5)/0x10) + 1;
             state->sp -= 2;
             if (r1 < 7) {
@@ -432,6 +437,10 @@ int executeOp(CPUState *state) {
         //POP
         case 0xc1: case 0xd1: case 0xe1: case 0xf1:
         {
+            if (state->sp > state->mem_size - 2) {
+                fprintf(stderr, "Stack underflow on POP!\n");
+                exit(1);
+            }
             int r1 = 2*((*opcode - 0xc1)/0x10) + 1;
             if (r1 < 7) {
                 state->reg[r1] = state->memory[state->sp + 1];
@@ -450,9 +459,79 @@ int executeOp(CPUState *state) {
             state->sp += 2;
             break;
         }
+        //DAD
+        case 0x09: case 0x19: case 0x29: case 0x39:
+        {
+            int r1 = 2*((*opcode - 0x09)/0x10) + 1;
+            int arg1;
+            if (r1 < 7) {
+                arg1 = state->reg[r1] << 8 | state->reg[r1 + 1];
+            } else { // DAD SP
+                arg1 = state->sp;
+            }
+            int arg2 = state->reg[5] << 8 | state->reg[6];
+            int res = arg1 + arg2;
+            state->fl.cy = res > 0xffff;
+            state->reg[5] = (res >> 8) & 0xff;
+            state->reg[6] = res & 0xff;
+            break;
+        }
+        //INX
+        case 0x03: case 0x13: case 0x23: case 0x33:
+        {
+            int r1 = 2*((*opcode - 0x03)/0x10) + 1;
+            if (r1 < 7) {
+                uint16_t res = (state->reg[r1] << 8 | state->reg[r1 + 1]) + 1;
+                state->reg[r1] = res >> 8;
+                state->reg[r1 + 1] = res & 0xff;
+            } else { //INX SP
+                state->sp += 1;
+            }
+            break;
+        }
+        //DCX
+        case 0x0b: case 0x1b: case 0x2b: case 0x3b:
+        {
+            int r1 = 2*((*opcode - 0x0b)/0x10) + 1;
+            if (r1 < 7) {
+                uint16_t res = (state->reg[r1] << 8 | state->reg[r1 + 1]) - 1;
+                state->reg[r1] = res >> 8;
+                state->reg[r1 + 1] = res & 0xff;
+            } else { //INX SP
+                state->sp -= 1;
+            }
+            break;
+        }
+        //XCHG
+        case 0xeb:
+        {
+            uint16_t tmp = state->reg[5] << 8 | state->reg[6];
+            state->reg[5] = state->reg[3];
+            state->reg[6] = state->reg[4];
+            state->reg[3] = tmp >> 8;
+            state->reg[4] = tmp & 0xff;
+            break;
+        }
+        //XTHL
+        case 0xe3:
+        {
+            if (state->sp > state->mem_size - 2) {
+                fprintf(stderr, "Stack underflow on XTHL!\n");
+                exit(1);
+            }
+            state->reg[6] = state->memory[state->sp];
+            state->reg[5] = state->memory[state->sp + 1];
+            break;
+        }
+        //SPHL
+        case 0xf9:
+        {
+            state->sp = state->reg[5] << 8 | state->reg[6];
+            break;
+        }
         //HLT
-        case 0x76: return 1; break;
-        default: unknownOp(state); break;
+        case 0x76: state->pc--; return 1; break;
+        default: unknownOp(); break;
     }
     state->pc++;
     return 0;

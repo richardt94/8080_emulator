@@ -5,7 +5,7 @@
 CPUState* cs;
 
 void state_setup(void) {
-    cs = newState();
+    cs = newState(8192);
 }
 
 void state_teardown(void) {
@@ -456,6 +456,12 @@ END_TEST
 
 START_TEST (test_push)
 {
+    //sp must be initialised
+    //by the programmer before stack
+    //operations have defined behaviour.
+    //for these tests we just manually
+    //set it ourselves.
+    cs->sp = 8192;
     cs->memory[0] = 0xc5;
     cs->reg[1] = 0x11;
     cs->reg[2] = 0x22;
@@ -469,6 +475,7 @@ END_TEST
 
 START_TEST (test_push_psw)
 {
+    cs->sp = 8192;
     cs->memory[0] = 0xf5;
     cs->fl.cy = 1;
     cs->fl.z = 1;
@@ -484,6 +491,7 @@ END_TEST
 
 START_TEST (test_pop)
 {
+    cs->sp = 8192;
     cs->memory[0] = 0xc1;
     cs->sp -= 2;
     cs->memory[cs->sp] = 0x3d;
@@ -498,6 +506,7 @@ END_TEST
 
 START_TEST (test_pop_psw)
 {
+    cs->sp = 8192;
     cs->memory[0] = 0xf1;
     cs->sp -= 2;
     cs->memory[cs->sp] = 0xc3;
@@ -511,6 +520,114 @@ START_TEST (test_pop_psw)
     ck_assert_int_eq(cs->fl.ac, 0);
     ck_assert_int_eq(cs->fl.z, 1);
     ck_assert_int_eq(cs->fl.s, 1);
+}
+END_TEST
+
+START_TEST (test_dad)
+{
+    //HL is the "double accumulator"
+    cs->memory[0] = 0x09;
+    cs->reg[1] = 0x33;
+    cs->reg[2] = 0x9f;
+    cs->reg[5] = 0xa1;
+    cs->reg[6] = 0x7b;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[6], 0x1a);
+    ck_assert_int_eq(cs->reg[5], 0xd5);
+    ck_assert_int_eq(cs->fl.cy, 0);
+}
+END_TEST
+
+START_TEST (test_dad_sp)
+{
+    cs->memory[0] = 0x39;
+    cs->sp = 0x339f;
+    cs->reg[5] = 0xd1;
+    cs->reg[6] = 0x7b;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[6], 0x1a);
+    ck_assert_int_eq(cs->reg[5], 0x05);
+    ck_assert_int_eq(cs->fl.cy, 1);
+}
+END_TEST
+
+START_TEST (test_inx)
+{
+    cs->memory[0] = 0x13;
+    cs->reg[3] = 0x38;
+    cs->reg[4] = 0xff;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[3], 0x39);
+    ck_assert_int_eq(cs->reg[4], 0x00);
+}
+END_TEST
+
+START_TEST (test_inx_sp)
+{
+    cs->memory[0] = 0x33;
+    cs->sp = 0xffff;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->sp, 0x0000);
+    ck_assert_int_eq(cs->fl.cy, 0); //inx doesn't carry
+}
+END_TEST
+
+START_TEST (test_dcx)
+{
+    cs->memory[0] = 0x2b;
+    cs->reg[5] = 0x98;
+    cs->reg[6] = 0x00;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[6], 0xff);
+    ck_assert_int_eq(cs->reg[5], 0x97);
+}
+END_TEST
+
+START_TEST (test_dcx_sp)
+{
+    cs->memory[0] = 0x3b;
+    cs->sp = 0x0000;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->sp, 0xffff);
+    ck_assert_int_eq(cs->fl.cy, 0); //dcx doesn't carry
+}
+END_TEST
+
+START_TEST (test_xchg)
+{
+    cs->memory[0] = 0xeb;
+    cs->reg[3] = 0x11;
+    cs->reg[4] = 0x22;
+    cs->reg[5] = 0x33;
+    cs->reg[6] = 0x44;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[3], 0x33);
+    ck_assert_int_eq(cs->reg[4], 0x44);
+    ck_assert_int_eq(cs->reg[5], 0x11);
+    ck_assert_int_eq(cs->reg[6], 0x22);
+}
+END_TEST
+
+START_TEST (test_xthl)
+{
+    cs->memory[0] = 0xe3;
+    cs->sp = 8190;
+    cs->memory[cs->sp] = 0x11;
+    cs->memory[cs->sp + 1] = 0x22;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[5], 0x22);
+    ck_assert_int_eq(cs->reg[6], 0x11);
+}
+END_TEST
+
+START_TEST (test_sphl)
+{
+    cs->memory[0] = 0xf9;
+    cs->sp = 0;
+    cs->reg[5] = 0x11;
+    cs->reg[6] = 0x22;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->sp, 0x1122);
 }
 END_TEST
 
@@ -581,6 +698,15 @@ Suite *cpu_suite(void) {
     tcase_add_test(tc_tworeg, test_push_psw);
     tcase_add_test(tc_tworeg, test_pop);
     tcase_add_test(tc_tworeg, test_pop_psw);
+    tcase_add_test(tc_tworeg, test_dad);
+    tcase_add_test(tc_tworeg, test_dad_sp);
+    tcase_add_test(tc_tworeg, test_inx);
+    tcase_add_test(tc_tworeg, test_inx_sp);
+    tcase_add_test(tc_tworeg, test_dcx);
+    tcase_add_test(tc_tworeg, test_dcx_sp);
+    tcase_add_test(tc_tworeg, test_xchg);
+    tcase_add_test(tc_tworeg, test_xthl);
+    tcase_add_test(tc_tworeg, test_sphl);
 
     suite_add_tcase(s, tc_single);
     suite_add_tcase(s, tc_transfer);
