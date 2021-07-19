@@ -631,6 +631,51 @@ START_TEST (test_sphl)
 }
 END_TEST
 
+START_TEST (test_lxi)
+{
+    cs->memory[0] = 0x21;
+    cs->memory[1] = 0xab;
+    cs->memory[2] = 0xcd;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[5], 0xcd);
+    ck_assert_int_eq(cs->reg[6], 0xab);
+    ck_assert_int_eq(cs->pc, 3);
+}
+END_TEST
+
+START_TEST (test_lxi_sp)
+{
+    cs->memory[0] = 0x31;
+    cs->memory[1] = 0x12;
+    cs->memory[2] = 0x34;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->sp, 0x3412);
+    ck_assert_int_eq(cs->pc, 3);
+}
+END_TEST
+
+START_TEST (test_mvi)
+{
+    cs->memory[0] = 0x1e;
+    cs->memory[1] = 0x5a;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[4], 0x5a);
+    ck_assert_int_eq(cs->pc, 2);
+}
+END_TEST
+
+START_TEST (test_mvi_mem)
+{
+    cs->memory[0] = 0x36;
+    cs->memory[1] = 0x7a;
+    cs->reg[5] = 0x1a;
+    cs->reg[6] = 0x2b;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->memory[0x1a2b], 0x7a);
+    ck_assert_int_eq(cs->pc, 2);
+}
+END_TEST
+
 Suite *cpu_suite(void) {
     Suite *s;
     TCase *tc_single;
@@ -639,20 +684,25 @@ Suite *cpu_suite(void) {
     TCase *tc_logcomp;
     TCase *tc_rotate;
     TCase *tc_tworeg;
+    TCase *tc_immediate;
 
     s = suite_create("CPU Instructions");
+
     tc_single = tcase_create("Single-register ops");
     tc_transfer = tcase_create("Data transfer instructions");
     tc_arithmetic = tcase_create("Arithmetic instructions");
     tc_logcomp = tcase_create("Logical comparisons");
     tc_rotate = tcase_create("Accumulator rotations");
     tc_tworeg = tcase_create("Register pair instructions");
+    tc_immediate = tcase_create("Immediate instructions");
+
     tcase_add_checked_fixture(tc_single, state_setup, state_teardown);
     tcase_add_checked_fixture(tc_transfer, state_setup, state_teardown);
     tcase_add_checked_fixture(tc_arithmetic, state_setup, state_teardown);
     tcase_add_checked_fixture(tc_logcomp, state_setup, state_teardown);
     tcase_add_checked_fixture(tc_rotate, state_setup, state_teardown);
     tcase_add_checked_fixture(tc_tworeg, state_setup, state_teardown);
+    tcase_add_checked_fixture(tc_immediate, state_setup, state_teardown);
 
     tcase_add_test(tc_single, test_inr);
     tcase_add_test(tc_single, test_inr_mem);
@@ -708,12 +758,18 @@ Suite *cpu_suite(void) {
     tcase_add_test(tc_tworeg, test_xthl);
     tcase_add_test(tc_tworeg, test_sphl);
 
+    tcase_add_test(tc_immediate, test_lxi);
+    tcase_add_test(tc_immediate, test_lxi_sp);
+    tcase_add_test(tc_immediate, test_mvi);
+    tcase_add_test(tc_immediate, test_mvi_mem);
+
     suite_add_tcase(s, tc_single);
     suite_add_tcase(s, tc_transfer);
     suite_add_tcase(s, tc_arithmetic);
     suite_add_tcase(s, tc_logcomp);
     suite_add_tcase(s, tc_rotate);
     suite_add_tcase(s, tc_tworeg);
+    suite_add_tcase(s, tc_immediate);
 
     return s;
 }

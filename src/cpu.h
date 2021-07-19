@@ -529,6 +529,35 @@ int executeOp(CPUState *state) {
             state->sp = state->reg[5] << 8 | state->reg[6];
             break;
         }
+        //LXI
+        case 0x01: case 0x11: case 0x21: case 0x31:
+        {
+            int r1 = 2*((*opcode - 0x01)/0x10) + 1;
+            if (r1 < 7) {
+                state->reg[r1] = opcode[2];
+                state->reg[r1 + 1] = opcode[1];
+            } else { //LXI SP
+                state->sp = opcode[2] << 8 | opcode[1];
+            }
+            state->pc += 2;
+            break;
+        }
+        //MVI
+        case 0x06: case 0x0e: case 0x16: case 0x1e:
+        case 0x26: case 0x2e: case 0x36: case 0x3e:
+        {
+            int dsttype = (*opcode - 0x06) / 0x08;
+            if (dsttype < 6) {
+                state->reg[dsttype + 1] = opcode[1];
+            } else if (dsttype == 6) {
+                uint16_t mem_adr = state->reg[5] << 8 | state->reg[6];
+                state->memory[mem_adr] = opcode[1];
+            } else {
+                state->reg[0] = opcode[1];
+            }
+            state->pc++;
+            break;
+        }
         //HLT
         case 0x76: state->pc--; return 1; break;
         default: unknownOp(); break;
