@@ -100,6 +100,18 @@ void set_result(uint16_t res, CPUState *state) {
     state->reg[0] = res & 0xff; //res is always sent to A (the accumulator)
 }
 
+//for conditional jumps
+int jump_if(int flag, uint16_t address, CPUState *s) {
+    if (!flag) {
+        s->pc += 2;
+        return 0;
+    } else {
+        if (address > s->mem_size) return 1;
+        s->pc = address - 1;
+    }
+    return 0;
+}
+
 //instruction implementations
 //returns true once CPU halts
 int executeOp(CPUState *state) {
@@ -571,6 +583,7 @@ int executeOp(CPUState *state) {
                 exit(1);
             }
             state->memory[mem_adr] = state->reg[0];
+            state->pc += 2;
             break;
         }
         //LDA
@@ -582,6 +595,7 @@ int executeOp(CPUState *state) {
                 exit(1);
             }
             state->reg[0] = state->memory[mem_adr];
+            state->pc += 2;
             break;
         }
         //SHLD
@@ -594,6 +608,7 @@ int executeOp(CPUState *state) {
             }
             state->memory[mem_adr] = state->reg[6];
             state->memory[mem_adr + 1] = state->reg[5];
+            state->pc += 2;
             break;
         }
         //LHLD
@@ -606,6 +621,38 @@ int executeOp(CPUState *state) {
             }
             state->reg[6] = state->memory[mem_adr];
             state->reg[5] = state->memory[mem_adr + 1];
+            state->pc += 2;
+            break;
+        }
+        //JMP
+        case 0xc3:
+        {
+            int failure = jump_if(1, opcode[2] << 8 | opcode[1], state);
+            if (failure) {
+                fprintf(stderr, "JMP to invalid address!\n");
+                exit(1);
+            }
+            break;
+        }
+        //JNZ, JZ, JNC, JC, JPO, JPE, JP, JM
+        case 0xc2: case 0xca: case 0xd2: case 0xda:
+        case 0xe2: case 0xea: case 0xf2: case 0xfa:
+        {
+            int cflags[4] = {state->fl.z, state->fl.cy,
+                             state->fl.p, state->fl.s};
+            int ftype = (*opcode - 0xc2) / 0x10;
+            int positive = (*opcode - 0xc2) % 0x10 > 0;
+            int flag = cflags[ftype];
+            flag = positive ? flag : !flag;
+            int failure = jump_if(flag, opcode[2] << 8 | opcode[1], state);
+            if (failure) {
+                static const char freprs[8][3] =
+                                        {"NZ", "Z", "NC", "C",
+                                         "PO", "PE", "P", "M"};
+                fprintf(stderr, "J%s to invalid address!\n",
+                    freprs[(*opcode - 0xc2)/0x08]);
+                exit(1);
+            }
             break;
         }
         //HLT
