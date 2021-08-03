@@ -535,8 +535,11 @@ int executeOp(CPUState *state) {
                 fprintf(stderr, "Stack underflow on XTHL!\n");
                 exit(1);
             }
+            uint16_t tmp = state->reg[5] << 8 | state->reg[6];
             state->reg[6] = state->memory[state->sp];
             state->reg[5] = state->memory[state->sp + 1];
+            state->memory[state->sp] = tmp & 0xff;
+            state->memory[state->sp+1] = tmp >> 8;
             break;
         }
         //SPHL
@@ -653,6 +656,75 @@ int executeOp(CPUState *state) {
                     freprs[(*opcode - 0xc2)/0x08]);
                 exit(1);
             }
+            break;
+        }
+        //CALL
+        case 0xcd:
+        {
+            //push return address to stack
+            if (state->sp < 2) {
+                fprintf(stderr, "Stack overflow on CALL!\n");
+                exit(1);
+            }
+            state->sp -= 2;
+            uint16_t ret_adr = state->pc + 3;
+            state->memory[state->sp + 1] = ret_adr >> 8;
+            state->memory[state->sp] = ret_adr & 0xff;
+            //jump
+            int failure = jump_if(1, opcode[2] << 8 | opcode[1], state);
+            if (failure) {
+                fprintf(stderr, "CALL to invalid address!\n");
+                exit(1);
+            }
+            break;
+        }
+        //CNZ, CZ, CNC, CC, CPO, CPE, CP, CM
+        case 0xc4: case 0xcc: case 0xd4: case 0xdc:
+        case 0xe4: case 0xec: case 0xf4: case 0xfc:
+        {
+            int cflags[4] = {state->fl.z, state->fl.cy,
+                             state->fl.p, state->fl.s};
+            int ftype = (*opcode - 0xc4) / 0x10;
+            int positive = (*opcode - 0xc4) % 0x10 > 0;
+            int flag = cflags[ftype];
+            flag = positive ? flag : !flag;
+            if (flag) {
+                //push return address to stack
+                if (state->sp < 2) {
+                    fprintf(stderr, "Stack overflow on CALL!\n");
+                    exit(1);
+                }
+                state->sp -= 2;
+                uint16_t ret_adr = state->pc + 3;
+                state->memory[state->sp + 1] = ret_adr >> 8;
+                state->memory[state->sp] = ret_adr & 0xff;
+            }
+            int failure = jump_if(flag, opcode[2] << 8 | opcode[1], state);
+            if (failure) {
+                static const char freprs[8][3] =
+                                        {"NZ", "Z", "NC", "C",
+                                         "PO", "PE", "P", "M"};
+                fprintf(stderr, "C%s to invalid address!\n",
+                    freprs[(*opcode - 0xc2)/0x08]);
+                exit(1);
+            }
+            break;
+        }
+        //RET
+        case 0xc9:
+        {
+            if (state->sp > state->mem_size - 2) {
+                fprintf(stderr, "Stack underflow on RET!\n");
+                exit(1);
+            }
+            uint16_t mem_adr = state->memory[state->sp + 1] << 8 |
+                                state->memory[state->sp];
+            state->sp += 2;
+            if (mem_adr > state->mem_size) {
+                fprintf(stderr, "RET to invalid address!\n");
+                exit(1);
+            }
+            state->pc = mem_adr - 1;
             break;
         }
         //HLT

@@ -633,9 +633,14 @@ START_TEST (test_xthl)
     cs->sp = 8190;
     cs->memory[cs->sp] = 0x11;
     cs->memory[cs->sp + 1] = 0x22;
+    cs->reg[5] = 0x33;
+    cs->reg[6] = 0x44;
     ck_assert_int_eq(executeOp(cs), 0);
     ck_assert_int_eq(cs->reg[5], 0x22);
     ck_assert_int_eq(cs->reg[6], 0x11);
+    ck_assert_int_eq(cs->sp, 8190);
+    ck_assert_int_eq(cs->memory[cs->sp], 0x44);
+    ck_assert_int_eq(cs->memory[cs->sp+1], 0x33);
 }
 END_TEST
 
@@ -856,6 +861,173 @@ START_TEST (test_jpo)
 }
 END_TEST
 
+START_TEST (test_call)
+{
+    //CALL pushes return address
+    //onto the stack then does a JMP
+    //to the indicated address
+    cs->sp = 8192;
+    cs->pc = 0x0abc;
+    cs->memory[cs->pc] = 0xcd;
+    cs->memory[cs->pc+1] = 0xcd;
+    cs->memory[cs->pc+2] = 0x0b;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->pc, 0x0bcd);
+    //return to instruction after the CALL
+    ck_assert_int_eq(cs->memory[cs->sp], 0xbf);
+    ck_assert_int_eq(cs->memory[cs->sp+1], 0x0a);
+}
+END_TEST
+
+START_TEST (test_cc)
+{
+    cs->sp = 8192;
+    cs->pc = 0x0abc;
+    cs->memory[cs->pc] = 0xdc;
+    cs->memory[cs->pc+1] = 0x90;
+    cs->memory[cs->pc+2] = 0x13;
+    cs->fl.cy = 1;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->pc, 0x1390);
+    ck_assert_int_eq(cs->memory[cs->sp], 0xbf);
+    ck_assert_int_eq(cs->memory[cs->sp+1], 0x0a);
+}
+END_TEST
+
+START_TEST(test_cc_no_jump)
+{
+    cs->sp = 8192;
+    cs->pc = 0x0abc;
+    cs->memory[cs->pc] = 0xdc;
+    cs->memory[cs->pc+1] = 0x90;
+    cs->memory[cs->pc+2] = 0x13;
+    cs->fl.cy = 0;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->pc, 0x0abf);
+    ck_assert_int_eq(cs->sp, 8192);//stack still empty
+}
+END_TEST
+
+START_TEST (test_cnc)
+{
+    cs->sp = 8192;
+    cs->pc = 0x0abc;
+    cs->memory[cs->pc] = 0xd4;
+    cs->memory[cs->pc+1] = 0xde;
+    cs->memory[cs->pc+2] = 0x03;
+    cs->fl.cy = 0;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->pc, 0x03de);
+    ck_assert_int_eq(cs->memory[cs->sp], 0xbf);
+    ck_assert_int_eq(cs->memory[cs->sp+1], 0x0a);
+}
+END_TEST
+
+START_TEST (test_cz)
+{
+    cs->sp = 8192;
+    cs->pc = 0x0abc;
+    cs->memory[cs->pc] = 0xcc;
+    cs->memory[cs->pc+1] = 0x10;
+    cs->memory[cs->pc+2] = 0x01;
+    cs->fl.z = 1;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->pc, 0x0110);
+    ck_assert_int_eq(cs->memory[cs->sp], 0xbf);
+    ck_assert_int_eq(cs->memory[cs->sp+1], 0x0a);
+}
+END_TEST
+
+START_TEST (test_cnz)
+{
+    cs->sp = 8192;
+    cs->pc = 0x0abc;
+    cs->memory[cs->pc] = 0xc4;
+    cs->memory[cs->pc+1] = 0x01;
+    cs->memory[cs->pc+2] = 0x10;
+    cs->fl.z = 0;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->pc, 0x1001);
+    ck_assert_int_eq(cs->memory[cs->sp], 0xbf);
+    ck_assert_int_eq(cs->memory[cs->sp+1], 0x0a);
+}
+END_TEST
+
+START_TEST (test_cm)
+{
+    cs->sp = 8192;
+    cs->pc = 0x0abc;
+    cs->memory[cs->pc] = 0xfc;
+    cs->memory[cs->pc+1] = 0x21;
+    cs->memory[cs->pc+2] = 0x03;
+    cs->fl.s = 1;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->pc, 0x0321);
+    ck_assert_int_eq(cs->memory[cs->sp], 0xbf);
+    ck_assert_int_eq(cs->memory[cs->sp+1], 0x0a);
+}
+END_TEST
+
+START_TEST (test_cp)
+{
+    cs->sp = 8192;
+    cs->pc = 0x0abc;
+    cs->memory[cs->pc] = 0xf4;
+    cs->memory[cs->pc+1] = 0xba;
+    cs->memory[cs->pc+2] = 0x0c;
+    cs->fl.s = 0;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->pc, 0x0cba);
+    ck_assert_int_eq(cs->memory[cs->sp], 0xbf);
+    ck_assert_int_eq(cs->memory[cs->sp+1], 0x0a);
+}
+END_TEST
+
+START_TEST (test_cpe)
+{
+    cs->sp = 8192;
+    cs->pc = 0x0abc;
+    cs->memory[cs->pc] = 0xec;
+    cs->memory[cs->pc+1] = 0xed;
+    cs->memory[cs->pc+2] = 0x0f;
+    cs->fl.p = 1;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->pc, 0x0fed);
+    ck_assert_int_eq(cs->memory[cs->sp], 0xbf);
+    ck_assert_int_eq(cs->memory[cs->sp+1], 0x0a);
+}
+END_TEST
+
+START_TEST (test_cpo)
+{
+    cs->sp = 8192;
+    cs->pc = 0x0abc;
+    cs->memory[cs->pc] = 0xe4;
+    cs->memory[cs->pc+1] = 0xef;
+    cs->memory[cs->pc+2] = 0x0d;
+    cs->fl.p = 0;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->pc, 0x0def);
+    ck_assert_int_eq(cs->memory[cs->sp], 0xbf);
+    ck_assert_int_eq(cs->memory[cs->sp+1], 0x0a);
+}
+END_TEST
+
+START_TEST (test_ret)
+{
+    //pop an address off the stack and go there
+    cs->sp = 8192;
+    cs->sp -= 2;
+    cs->memory[cs->sp] = 0xbf;
+    cs->memory[cs->sp+1] = 0x0a;
+    cs->pc = 0x0bcd;
+    cs->memory[cs->pc] = 0xc9;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->sp, 8192);
+    ck_assert_int_eq(cs->pc, 0x0abf);
+}
+END_TEST
+
 Suite *cpu_suite(void) {
     Suite *s;
 
@@ -869,6 +1041,8 @@ Suite *cpu_suite(void) {
     TCase *tc_immediate;
     TCase *tc_direct;
     TCase *tc_jumps;
+    TCase *tc_calls;
+    TCase *tc_rets;
 
     s = suite_create("CPU Instructions");
 
@@ -882,6 +1056,8 @@ Suite *cpu_suite(void) {
     tc_immediate = tcase_create("Immediate instructions");
     tc_direct = tcase_create("Direct addressing instructions");
     tc_jumps = tcase_create("Jumps");
+    tc_calls = tcase_create("Calls");
+    tc_rets = tcase_create("Returns");
 
     tcase_add_checked_fixture(tc_carry, state_setup, state_teardown);
     tcase_add_checked_fixture(tc_single, state_setup, state_teardown);
@@ -893,6 +1069,8 @@ Suite *cpu_suite(void) {
     tcase_add_checked_fixture(tc_immediate, state_setup, state_teardown);
     tcase_add_checked_fixture(tc_direct, state_setup, state_teardown);
     tcase_add_checked_fixture(tc_jumps, state_setup, state_teardown);
+    tcase_add_checked_fixture(tc_calls, state_setup, state_teardown);
+    tcase_add_checked_fixture(tc_rets, state_setup, state_teardown);
 
     tcase_add_test(tc_carry, test_stc);
     tcase_add_test(tc_carry, test_cmc);
@@ -972,6 +1150,20 @@ Suite *cpu_suite(void) {
     tcase_add_test(tc_jumps, test_jpe);
     tcase_add_test(tc_jumps, test_jpo);
 
+    tcase_add_test(tc_calls, test_call);
+    tcase_add_test(tc_calls, test_cc);
+    tcase_add_test(tc_calls, test_cc_no_jump);
+    tcase_add_test(tc_calls, test_cnc);
+    tcase_add_test(tc_calls, test_cz);
+    tcase_add_test(tc_calls, test_cnz);
+    tcase_add_test(tc_calls, test_cm);
+    tcase_add_test(tc_calls, test_cp);
+    tcase_add_test(tc_calls, test_cpe);
+    tcase_add_test(tc_calls, test_cpo);
+
+    tcase_add_test(tc_rets, test_ret);
+
+
     suite_add_tcase(s, tc_carry);
     suite_add_tcase(s, tc_single);
     suite_add_tcase(s, tc_transfer);
@@ -982,6 +1174,8 @@ Suite *cpu_suite(void) {
     suite_add_tcase(s, tc_immediate);
     suite_add_tcase(s, tc_direct);
     suite_add_tcase(s, tc_jumps);
+    suite_add_tcase(s, tc_calls);
+    suite_add_tcase(s, tc_rets);
 
     return s;
 }
