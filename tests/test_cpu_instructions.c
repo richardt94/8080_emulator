@@ -1028,6 +1028,133 @@ START_TEST (test_ret)
 }
 END_TEST
 
+
+START_TEST (test_rc)
+{
+    cs->sp = 8190;
+    cs->pc = 0x1390;
+    cs->memory[cs->pc] = 0xd8;
+    cs->memory[cs->sp] = 0xbf;
+    cs->memory[cs->sp+1] = 0x0a;
+    cs->fl.cy = 1;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->pc, 0x0abf);
+    ck_assert_int_eq(cs->sp, 8192);
+}
+END_TEST
+
+START_TEST(test_rc_no_jump)
+{
+    cs->sp = 8190;
+    cs->pc = 0x1390;
+    cs->memory[cs->pc] = 0xd8;
+    cs->memory[cs->sp] = 0xbf;
+    cs->memory[cs->sp+1] = 0x0a;
+    cs->fl.cy = 0;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->pc, 0x1391);
+    ck_assert_int_eq(cs->sp, 8190);//stack still filled
+}
+END_TEST
+
+START_TEST (test_rnc)
+{
+    cs->sp = 8190;
+    cs->pc = 0x03de;
+    cs->memory[cs->pc] = 0xd0;
+    cs->memory[cs->sp] = 0xbf;
+    cs->memory[cs->sp+1] = 0x0a;
+    cs->fl.cy = 0;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->pc, 0x0abf);
+    ck_assert_int_eq(cs->sp, 8192);
+}
+END_TEST
+
+START_TEST (test_rz)
+{
+    cs->sp = 8190;
+    cs->pc = 0x0110;
+    cs->memory[cs->pc] = 0xc8;
+    cs->memory[cs->sp] = 0xbf;
+    cs->memory[cs->sp+1] = 0x0a;
+    cs->fl.z = 1;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->pc, 0x0abf);
+    ck_assert_int_eq(cs->sp, 8192);
+}
+END_TEST
+
+START_TEST (test_rnz)
+{
+    cs->sp = 8190;
+    cs->pc = 0x1001;
+    cs->memory[cs->pc] = 0xc0;
+    cs->memory[cs->sp] = 0x01;
+    cs->memory[cs->sp+1] = 0x10;
+    cs->fl.z = 0;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->pc, 0x0abf);
+    ck_assert_int_eq(cs->sp, 8192);
+}
+END_TEST
+
+START_TEST (test_rm)
+{
+    cs->sp = 8190;
+    cs->pc = 0x0321;
+    cs->memory[cs->pc] = 0xf8;
+    cs->memory[cs->sp] = 0xbf;
+    cs->memory[cs->sp+1] = 0x0a;
+    cs->fl.s = 1;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->pc, 0x0abf);
+    ck_assert_int_eq(cs->sp, 8192);
+}
+END_TEST
+
+START_TEST (test_rp)
+{
+    cs->sp = 8190;
+    cs->pc = 0x0cba;
+    cs->memory[cs->pc] = 0xf0;
+    cs->memory[cs->sp] = 0xbf;
+    cs->memory[cs->sp+1] = 0x0a;
+    cs->fl.s = 0;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->pc, 0x0abf);
+    ck_assert_int_eq(cs->sp, 8192);
+}
+END_TEST
+
+START_TEST (test_rpe)
+{
+    cs->sp = 8190;
+    cs->pc = 0x0fed;
+    cs->memory[cs->pc] = 0xe8;
+    cs->memory[cs->sp] = 0xbf;
+    cs->memory[cs->sp+1] = 0x0a;
+    cs->fl.p = 1;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->pc, 0x0abf);
+    ck_assert_int_eq(cs->sp, 8192);
+}
+END_TEST
+
+START_TEST (test_rpo)
+{
+    cs->sp = 8190;
+    cs->pc = 0x0def;
+    cs->memory[cs->pc] = 0xe0;
+    cs->memory[cs->sp] = 0xbf;
+    cs->memory[cs->sp+1] = 0x0a;
+    cs->fl.p = 0;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->sp, 8192);
+    ck_assert_int_eq(cs->pc, 0x0abf);
+}
+END_TEST
+
 Suite *cpu_suite(void) {
     Suite *s;
 
@@ -1162,6 +1289,15 @@ Suite *cpu_suite(void) {
     tcase_add_test(tc_calls, test_cpo);
 
     tcase_add_test(tc_rets, test_ret);
+    tcase_add_test(tc_rets, test_rc);
+    tcase_add_test(tc_rets, test_rc_no_jump);
+    tcase_add_test(tc_rets, test_rnc);
+    tcase_add_test(tc_rets, test_rz);
+    tcase_add_test(tc_rets, test_rnz);
+    tcase_add_test(tc_rets, test_rm);
+    tcase_add_test(tc_rets, test_rp);
+    tcase_add_test(tc_rets, test_rpe);
+    tcase_add_test(tc_rets, test_rpo);
 
 
     suite_add_tcase(s, tc_carry);
