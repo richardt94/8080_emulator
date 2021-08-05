@@ -1090,8 +1090,8 @@ START_TEST (test_rnz)
     cs->sp = 8190;
     cs->pc = 0x1001;
     cs->memory[cs->pc] = 0xc0;
-    cs->memory[cs->sp] = 0x01;
-    cs->memory[cs->sp+1] = 0x10;
+    cs->memory[cs->sp] = 0xbf;
+    cs->memory[cs->sp+1] = 0x0a;
     cs->fl.z = 0;
     ck_assert_int_eq(executeOp(cs), 0);
     ck_assert_int_eq(cs->pc, 0x0abf);

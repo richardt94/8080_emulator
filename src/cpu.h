@@ -106,7 +106,7 @@ int jump_if(int flag, uint16_t address, CPUState *s) {
         s->pc += 2;
         return 0;
     } else {
-        if (address > s->mem_size) return 1;
+        if (address >= s->mem_size) return 1;
         s->pc = address - 1;
     }
     return 0;
@@ -705,7 +705,7 @@ int executeOp(CPUState *state) {
                                         {"NZ", "Z", "NC", "C",
                                          "PO", "PE", "P", "M"};
                 fprintf(stderr, "C%s to invalid address!\n",
-                    freprs[(*opcode - 0xc2)/0x08]);
+                    freprs[(*opcode - 0xc4)/0x08]);
                 exit(1);
             }
             break;
@@ -720,11 +720,43 @@ int executeOp(CPUState *state) {
             uint16_t mem_adr = state->memory[state->sp + 1] << 8 |
                                 state->memory[state->sp];
             state->sp += 2;
-            if (mem_adr > state->mem_size) {
+            if (mem_adr >= state->mem_size) {
                 fprintf(stderr, "RET to invalid address!\n");
                 exit(1);
             }
             state->pc = mem_adr - 1;
+            break;
+        }
+        //RNZ, RZ, RNC, RC, RPO, RPE, RP, RM
+        case 0xc0: case 0xc8: case 0xd0: case 0xd8:
+        case 0xe0: case 0xe8: case 0xf0: case 0xf8:
+        {
+            int cflags[4] = {state->fl.z, state->fl.cy,
+                             state->fl.p, state->fl.s};
+            int ftype = (*opcode - 0xc0) / 0x10;
+            int positive = (*opcode - 0xc0) % 0x10 > 0;
+            int flag = cflags[ftype];
+            flag = positive ? flag : !flag;
+            if (flag) {
+                //pop return address off stack
+                if (state->sp > state->mem_size - 2) {
+                    fprintf(stderr, "Stack underflow on RET!\n");
+                    exit(1);
+                }
+                uint16_t mem_adr = state->memory[state->sp + 1] << 8 |
+                                    state->memory[state->sp];
+                state->sp += 2;
+                
+                if (mem_adr >= state->mem_size) {
+                    static const char freprs[8][3] =
+                                            {"NZ", "Z", "NC", "C",
+                                             "PO", "PE", "P", "M"};
+                    fprintf(stderr, "R%s to invalid address!\n",
+                        freprs[(*opcode - 0xc0)/0x08]);
+                    exit(1);
+                }
+                state->pc = mem_adr - 1;
+            }
             break;
         }
         //HLT
