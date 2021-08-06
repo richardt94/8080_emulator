@@ -759,6 +759,30 @@ int executeOp(CPUState *state) {
             }
             break;
         }
+        //RST 0-7
+        case 0xc7: case 0xcf: case 0xd7: case 0xdf:
+        case 0xe7: case 0xef: case 0xf7: case 0xff:
+        {
+            uint16_t rst_adr = (*opcode - 0xc7);
+            //push return address onto stack and jump to
+            //specified ISR
+            uint16_t ret_adr = state->pc + 1;
+            if (state->sp < 2) {
+                fprintf(stderr, "Stack overflow on RST!\n");
+                exit(1);
+            }
+            state->sp -= 2;
+            state->memory[state->sp] = ret_adr & 0xff;
+            state->memory[state->sp + 1] = ret_adr >> 8;
+            state->pc = rst_adr - 1;
+            break;
+        }
+        //EI, DI
+        case 0xf3: case 0xfb:
+        {
+            state->int_enable = (*opcode - 0xf3)/8;
+            break;
+        }
         //HLT
         case 0x76: state->pc--; return 1; break;
         default: unknownOp(); break;

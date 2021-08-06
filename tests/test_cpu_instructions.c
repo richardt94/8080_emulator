@@ -1155,6 +1155,56 @@ START_TEST (test_rpo)
 }
 END_TEST
 
+START_TEST (test_rst)
+{
+    cs->sp = 8192;
+    cs->pc = 0x04fe;
+    cs->memory[cs->pc] = 0xd7; //RST 2
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->sp, 8190);
+    ck_assert_int_eq(cs->pc, 0x0010); //2*8 = 16
+    ck_assert_int_eq(cs->memory[cs->sp], 0xff);
+    ck_assert_int_eq(cs->memory[cs->sp+1], 0x04);
+}
+END_TEST
+
+START_TEST (test_ei)
+{
+    cs->int_enable = 0;
+    cs->memory[0] = 0xfb;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->int_enable, 1);
+}
+END_TEST
+
+START_TEST (test_ei_unchanged)
+{
+    cs->int_enable = 1;
+    cs->memory[0] = 0xfb;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->int_enable, 1);
+
+}
+END_TEST
+
+START_TEST (test_di)
+{
+    cs->int_enable = 1;
+    cs->memory[0] = 0xf3;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->int_enable, 0);
+}
+END_TEST
+
+START_TEST (test_di_unchanged)
+{
+    cs->int_enable = 0;
+    cs->memory[0] = 0xf3;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->int_enable, 0);
+}
+END_TEST
+
 Suite *cpu_suite(void) {
     Suite *s;
 
@@ -1170,6 +1220,7 @@ Suite *cpu_suite(void) {
     TCase *tc_jumps;
     TCase *tc_calls;
     TCase *tc_rets;
+    TCase *tc_inter;
 
     s = suite_create("CPU Instructions");
 
@@ -1185,6 +1236,7 @@ Suite *cpu_suite(void) {
     tc_jumps = tcase_create("Jumps");
     tc_calls = tcase_create("Calls");
     tc_rets = tcase_create("Returns");
+    tc_inter = tcase_create("Interrupt system instructions");
 
     tcase_add_checked_fixture(tc_carry, state_setup, state_teardown);
     tcase_add_checked_fixture(tc_single, state_setup, state_teardown);
@@ -1198,6 +1250,7 @@ Suite *cpu_suite(void) {
     tcase_add_checked_fixture(tc_jumps, state_setup, state_teardown);
     tcase_add_checked_fixture(tc_calls, state_setup, state_teardown);
     tcase_add_checked_fixture(tc_rets, state_setup, state_teardown);
+    tcase_add_checked_fixture(tc_inter, state_setup, state_teardown);
 
     tcase_add_test(tc_carry, test_stc);
     tcase_add_test(tc_carry, test_cmc);
@@ -1299,6 +1352,11 @@ Suite *cpu_suite(void) {
     tcase_add_test(tc_rets, test_rpe);
     tcase_add_test(tc_rets, test_rpo);
 
+    tcase_add_test(tc_inter, test_rst);
+    tcase_add_test(tc_inter, test_ei);
+    tcase_add_test(tc_inter, test_ei_unchanged);
+    tcase_add_test(tc_inter, test_di);
+    tcase_add_test(tc_inter, test_di_unchanged);
 
     suite_add_tcase(s, tc_carry);
     suite_add_tcase(s, tc_single);
@@ -1312,6 +1370,7 @@ Suite *cpu_suite(void) {
     suite_add_tcase(s, tc_jumps);
     suite_add_tcase(s, tc_calls);
     suite_add_tcase(s, tc_rets);
+    suite_add_tcase(s, tc_inter);
 
     return s;
 }
