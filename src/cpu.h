@@ -27,10 +27,10 @@ typedef struct CPUState {
     byte *memory; //RAM
     Flags fl;
     byte int_enable;
-    uint16_t mem_size;
+    unsigned int mem_size;
 } CPUState;
 
-CPUState *newState(uint16_t mem_size) {
+CPUState *newState(unsigned int mem_size) {
     CPUState* cs = malloc(sizeof(CPUState));
     cs->fl.z = 0;
     cs->fl.s = 0;
