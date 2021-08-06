@@ -381,7 +381,7 @@ int executeOp(CPUState *state) {
             //arg is subtracted from accumulator internally to
             //set flags.
             byte r2;
-            if (*opcode == 0xf6) {
+            if (*opcode == 0xfe) {
                 r2 = opcode[1]; state->pc++;
             } else {
                 r2 = arithmeticOperand(*opcode - 0xb8, state);
