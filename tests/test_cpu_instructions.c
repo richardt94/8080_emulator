@@ -296,6 +296,18 @@ START_TEST (test_basic_sub)
 }
 END_TEST
 
+START_TEST (test_sub_zero)
+{
+    cs->reg[0] = 2;
+    cs->reg[1] = 0;
+    cs->memory[0] = 0x90;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[0], 2);
+    ck_assert_int_eq(cs->fl.z, 0);
+    ck_assert_int_eq(cs->fl.cy, 0);
+}
+END_TEST
+
 START_TEST (test_sub_greater)
 {
     //number greater than acc should set the carry ("borrow") bit
@@ -1277,6 +1289,7 @@ Suite *cpu_suite(void) {
     tcase_add_test(tc_arithmetic, test_adc_set);
     tcase_add_test(tc_arithmetic, test_adc_reset);
     tcase_add_test(tc_arithmetic, test_basic_sub);
+    tcase_add_test(tc_arithmetic, test_sub_zero);
     tcase_add_test(tc_arithmetic, test_sub_greater);
     tcase_add_test(tc_arithmetic, test_sub_self_reset);
     tcase_add_test(tc_arithmetic, test_sub_aux_carry);
