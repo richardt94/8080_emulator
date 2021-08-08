@@ -288,15 +288,14 @@ int executeOp(CPUState *state) {
         case 0x94: case 0x95: case 0x96: case 0x97:
         case 0xd6:
         {
-            byte r2;
+            unsigned int r2;
             if (*opcode == 0xd6) {
                 r2 = opcode[1]; state->pc++;
             } else {
                 r2 = arithmeticOperand(*opcode - 0x90, state);
             }
-            //negative of an explicitly unsigned type is automatically two's complement
-            //(not implementation dependent)
-            r2 = -(unsigned int) r2;
+            //this is necessary to correctly set the carry when subtracting zero
+            r2 = 256 - r2;
             uint16_t res = (uint16_t) state->reg[0] + (uint16_t) r2;
             state->fl.ac = (state->reg[0] & 0x0f) + (r2 & 0x0f) > 0x0f;
             set_result(res, state);
@@ -313,14 +312,14 @@ int executeOp(CPUState *state) {
             //the carry is internally added to the
             //second operand and subtraction then performed with normal
             //two's complement rules.
-            byte r2;
+            unsigned int r2;
             if (*opcode == 0xde) {
                 r2 = opcode[1]; state->pc++;
             } else {
                 r2 = arithmeticOperand(*opcode - 0x98, state);
             }
             r2 += state->fl.cy;
-            r2 = -(unsigned int) r2;
+            r2 = 256 - r2;
             uint16_t res = (uint16_t) state->reg[0] + (uint16_t) r2;
             state->fl.ac = (state->reg[0] & 0x0f) + (r2 & 0x0f) > 0x0f;
             set_result(res, state);
@@ -380,13 +379,13 @@ int executeOp(CPUState *state) {
             //CMP does not affect the accumulator.
             //arg is subtracted from accumulator internally to
             //set flags.
-            byte r2;
+            unsigned int r2;
             if (*opcode == 0xfe) {
                 r2 = opcode[1]; state->pc++;
             } else {
                 r2 = arithmeticOperand(*opcode - 0xb8, state);
             }
-            r2 = -(unsigned int) r2;
+            r2 = 256 - r2;
             uint16_t res = (uint16_t) state->reg[0] + (uint16_t) r2;
             state->fl.ac = (state->reg[0] & 0x0f) + (r2 & 0x0f) > 0x0f;
             set_flags(res, state);
