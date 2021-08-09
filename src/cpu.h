@@ -640,7 +640,7 @@ int executeOp(CPUState *state) {
         case 0xe9:
         {
             uint16_t mem_adr = state->reg[5] << 8 | state->reg[6];
-            if (mem_adr > state->mem_size) {
+            if (mem_adr > state->mem_size - 1) {
                 fprintf(stderr, "PCHL jump to invalid address!\n");
                 exit(1);
             }
