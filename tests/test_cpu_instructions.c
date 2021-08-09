@@ -106,6 +106,27 @@ START_TEST (test_daa)
 }
 END_TEST
 
+START_TEST (test_daa_no_change)
+{   
+    cs->memory[0] = 0x27;
+    cs->reg[0] = 0x55;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[0], 0x55);
+}
+END_TEST
+
+START_TEST (test_daa_carries)
+{
+    //example from CPUDIAG
+    cs->memory[0] = 0x27;
+    cs->reg[0] = 0x10;
+    cs->fl.cy = 1;
+    cs->fl.ac = 1;
+    ck_assert_int_eq(executeOp(cs),0);
+    ck_assert_int_eq(cs->reg[0], 0x76);
+}
+END_TEST
+
 START_TEST (test_cma)
 {
     cs->memory[0] = 0x2f;
@@ -417,6 +438,20 @@ START_TEST (test_ora)
     ck_assert_int_eq(cs->fl.z, 0);
     ck_assert_int_eq(cs->fl.s, 0);
     ck_assert_int_eq(cs->fl.p, 1);
+}
+END_TEST
+
+START_TEST (test_ora_a_ac_cy)
+{
+    //ORA A will zero carry and aux carry
+    cs->memory[0] = 0xb7;
+    cs->reg[0] = 0x55;
+    cs->fl.ac = 1;
+    cs->fl.cy = 1;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->reg[0], 0x55);
+    ck_assert_int_eq(cs->fl.cy, 0);
+    ck_assert_int_eq(cs->fl.ac, 0);
 }
 END_TEST
 
@@ -761,6 +796,16 @@ START_TEST (test_lhld)
     ck_assert_int_eq(cs->reg[5], 0x03);
     ck_assert_int_eq(cs->reg[6], 0xff);
     ck_assert_int_eq(cs->pc, 3);
+}
+END_TEST
+
+START_TEST (test_pchl)
+{
+    cs->memory[0] = 0xe9;
+    cs->reg[5] = 0x0b;
+    cs->reg[6] = 0x21;
+    ck_assert_int_eq(executeOp(cs), 0);
+    ck_assert_int_eq(cs->pc, 0x0b21);
 }
 END_TEST
 
@@ -1272,6 +1317,8 @@ Suite *cpu_suite(void) {
     tcase_add_test(tc_single, test_dcr);
     tcase_add_test(tc_single, test_dcr_mem);
     tcase_add_test(tc_single, test_daa);
+    tcase_add_test(tc_single, test_daa_no_change);
+    tcase_add_test(tc_single, test_daa_carries);
     tcase_add_test(tc_single, test_cma);
 
     tcase_add_test(tc_transfer, test_mov);
@@ -1300,6 +1347,7 @@ Suite *cpu_suite(void) {
     tcase_add_test(tc_logcomp, test_ana);
     tcase_add_test(tc_logcomp, test_xra);
     tcase_add_test(tc_logcomp, test_ora);
+    tcase_add_test(tc_logcomp, test_ora_a_ac_cy);
     tcase_add_test(tc_logcomp, test_cmp);
     tcase_add_test(tc_logcomp, test_cmp_opp_sign);
 
@@ -1332,6 +1380,7 @@ Suite *cpu_suite(void) {
     tcase_add_test(tc_direct, test_shld);
     tcase_add_test(tc_direct, test_lhld);
 
+    tcase_add_test(tc_jumps, test_pchl);
     tcase_add_test(tc_jumps, test_jmp);
     tcase_add_test(tc_jumps, test_jc);
     tcase_add_test(tc_jumps, test_jc_no_jump);

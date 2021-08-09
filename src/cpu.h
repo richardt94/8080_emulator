@@ -188,12 +188,16 @@ int executeOp(CPUState *state) {
         case 0x27:
         {
             uint16_t acc = state->reg[0];
-            if (acc & 0x0f > 0x9 || state->fl.ac) {
-                if (acc > 0x09) state->fl.ac = 1;
+            if ((acc & 0x0f) > 0x9 || state->fl.ac) {
+                if ((acc & 0x0f) > 0x09) state->fl.ac = 1;
                 else state->fl.ac = 0;
                 acc += 0x06;
             }
-            if (acc >= 0xa0) acc += 0x60;
+            if (acc >= 0xa0 | state->fl.cy) {
+                if (acc >= 0xa0) state->fl.cy = 1;
+                else state->fl.cy = 0;
+                acc += 0x60;
+            } 
             set_result(acc, state);
             break;
         }
@@ -339,6 +343,10 @@ int executeOp(CPUState *state) {
             }
             uint16_t res = (uint16_t) state->reg[0] & (uint16_t) r2;
             set_result(res, state);
+            //the behaviour of bitwise comparisons and the ac flag
+            //is poorly documented in the programmers' manual,
+            //but CPUDIAG suggests it should always be reset.
+            state->fl.ac = 0;
             break;
         }
         //XRA, XRI
@@ -354,6 +362,7 @@ int executeOp(CPUState *state) {
             }
             uint16_t res = (uint16_t) state->reg[0] ^ (uint16_t) r2;
             set_result(res, state);
+            state->fl.ac = 0;
             break;
         }
         //ORA, ORI
@@ -369,6 +378,7 @@ int executeOp(CPUState *state) {
             }
             uint16_t res = (uint16_t) state->reg[0] | (uint16_t) r2;
             set_result(res, state);
+            state->fl.ac = 0;
             break;
         }
         //CMP, CPI
@@ -624,6 +634,17 @@ int executeOp(CPUState *state) {
             state->reg[6] = state->memory[mem_adr];
             state->reg[5] = state->memory[mem_adr + 1];
             state->pc += 2;
+            break;
+        }
+        //PCHL
+        case 0xe9:
+        {
+            uint16_t mem_adr = state->reg[5] << 8 | state->reg[6];
+            if (mem_adr > state->mem_size) {
+                fprintf(stderr, "PCHL jump to invalid address!\n");
+                exit(1);
+            }
+            state->pc = mem_adr - 1;
             break;
         }
         //JMP
