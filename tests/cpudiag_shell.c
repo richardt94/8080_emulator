@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
         }
         //catch JMP $0000 (restart called at end of program)
         else if (cs->memory[cs->pc] == 0xc3 && (cs->memory[cs->pc+2] << 8 | cs->memory[cs->pc+1]) == 0) break;
-        else if (executeOp(cs) == 1) break;
+        else if (stepCPU(cs) == 1) break;
     }
 
     destroyState(cs);

@@ -56,7 +56,7 @@ void destroyState(CPUState *cs) {
 }
 
 //handling for unimplemented ops
-void unknownOp () {
+void unknownOp() {
     fprintf(stderr, "Error: unimplemented instruction. Exiting...\n");
     exit(1);
 }
@@ -103,35 +103,54 @@ void set_result(uint16_t res, CPUState *state) {
 //for conditional jumps
 int jump_if(int flag, uint16_t address, CPUState *s) {
     if (!flag) {
-        s->pc += 2;
         return 0;
     } else {
         if (address >= s->mem_size) return 1;
-        s->pc = address - 1;
+        s->pc = address;
     }
     return 0;
 }
 
+typedef struct OpStats {
+    int opbytes, opcycles;
+} OpStats;
+
+OpStats executeOp(CPUState *state, byte *opcode);
+
+int stepCPU(CPUState *state) {
+    OpStats st = executeOp(state, &state->memory[state->pc]);
+    state->pc += st.opbytes;
+    return st.opcycles;
+}
+
+int interruptCPU(CPUState *state, byte opcode) {
+    if (state->int_enable) {
+        OpStats st = executeOp(state, &opcode);
+        return st.opcycles;
+    } else return 0;
+}
+
 //instruction implementations
 //returns number of cycles for instruction - 0 for halt
-int executeOp(CPUState *state) {
-    byte *opcode = &state->memory[state->pc];
-    int opcycles = 0;
+OpStats executeOp(CPUState *state, byte *opcode) {
+    OpStats st;
+    st.opcycles = 0;
+    st.opbytes = 1;
     switch (*opcode) {
         //nops
         case 0x00: case 0x08: case 0x10: case 0x18:
         case 0x20: case 0x28: case 0x30: case 0x38:
         case 0xcb: case 0xd9: case 0xdd: case 0xed:
-        case 0xfd: opcycles = 4; break;
+        case 0xfd: st.opcycles = 4; break;
         //STC
-        case 0x37: opcycles = 4; state->fl.cy = 1; break;
+        case 0x37: st.opcycles = 4; state->fl.cy = 1; break;
         //CMC
-        case 0x3f: opcycles = 4; state->fl.cy = !state->fl.cy; break;
+        case 0x3f: st.opcycles = 4; state->fl.cy = !state->fl.cy; break;
         //INR
         case 0x04: case 0x0c: case 0x14: case 0x1c:
         case 0x24: case 0x2c: case 0x34: case 0x3c:
         {
-            opcycles = 5;
+            st.opcycles = 5;
             int atype = (*opcode - 0x04) / 8;
             byte res;
             int ri = -1;
@@ -143,7 +162,7 @@ int executeOp(CPUState *state) {
                 ri = 0;
                 res = state->reg[ri];
             } else {
-                opcycles = 10;
+                st.opcycles = 10;
                 mem_adr = state->reg[5] << 8 | state->reg[6];
                 res = state->memory[mem_adr];
             }
@@ -163,7 +182,7 @@ int executeOp(CPUState *state) {
         case 0x05: case 0x0d: case 0x15: case 0x1d:
         case 0x25: case 0x2d: case 0x35: case 0x3d:
         {
-            opcycles = 5;
+            st.opcycles = 5;
             int atype = (*opcode - 0x05) / 8;
             byte res;
             int ri = -1;
@@ -175,7 +194,7 @@ int executeOp(CPUState *state) {
                 ri = 0;
                 res = state->reg[ri];
             } else {
-                opcycles = 10;
+                st.opcycles = 10;
                 mem_adr = state->reg[5] << 8 | state->reg[6];
                 res = state->memory[mem_adr];
             }
@@ -192,7 +211,7 @@ int executeOp(CPUState *state) {
         //DAA
         case 0x27:
         {
-            opcycles = 4;
+            st.opcycles = 4;
             uint16_t acc = state->reg[0];
             if ((acc & 0x0f) > 0x9 || state->fl.ac) {
                 if ((acc & 0x0f) > 0x09) state->fl.ac = 1;
@@ -210,7 +229,7 @@ int executeOp(CPUState *state) {
         //CMA
         case 0x2f:
         {
-            opcycles = 4;
+            st.opcycles = 4;
             state->reg[0] = ~state->reg[0];
             break;
         }
@@ -232,9 +251,9 @@ int executeOp(CPUState *state) {
         case 0x78: case 0x79: case 0x7a: case 0x7b:
         case 0x7c: case 0x7d: case 0x7e: case 0x7f:
         {
-            opcycles = 5;
+            st.opcycles = 5;
             int srctype = *opcode & 0x07;
-            if (srctype == 6) opcycles = 7;
+            if (srctype == 6) st.opcycles = 7;
             byte data = arithmeticOperand(srctype, state);
             int dsttype = (*opcode & 0x38) / 8;
             if (dsttype < 6) {
@@ -242,7 +261,7 @@ int executeOp(CPUState *state) {
             } else if (dsttype == 7) {
                 state->reg[0] = data;
             } else {
-                opcycles = 7;
+                st.opcycles = 7;
                 int mem_adr = state->reg[5] << 8 | state->reg[6];
                 state->memory[mem_adr] = data;
             }
@@ -251,7 +270,7 @@ int executeOp(CPUState *state) {
         //STAX
         case 0x02: case 0x12:
         {
-            opcycles = 7;
+            st.opcycles = 7;
             int base_reg = 1 + 2 * (*opcode == 0x12);
             int mem_adr = state->reg[base_reg] << 8 | state->reg[base_reg + 1];
             state->memory[mem_adr] = state->reg[0];
@@ -260,7 +279,7 @@ int executeOp(CPUState *state) {
         //LDAX
         case 0x0A: case 0x1A:
         {
-            opcycles = 7;
+            st.opcycles = 7;
             int base_reg = 1 + 2 * (*opcode == 0x1A);
             int mem_adr = state->reg[base_reg] << 8 | state->reg[base_reg + 1];
             state->reg[0] = state->memory[mem_adr];
@@ -271,12 +290,12 @@ int executeOp(CPUState *state) {
         case 0x84: case 0x85: case 0x86: case 0x87:
         case 0xc6:
         {
-            if (*opcode == 0xc6 || *opcode == 0x86) opcycles = 7;
-            else opcycles = 4;
+            if (*opcode == 0xc6 || *opcode == 0x86) st.opcycles = 7;
+            else st.opcycles = 4;
             byte r2;
             //immediate
             if (*opcode == 0xc6) {
-                r2 = opcode[1]; state->pc++;
+                r2 = opcode[1]; st.opbytes = 2;
             } else {
                 //registers are just an array of bytes
                 r2 = arithmeticOperand(*opcode - 0x80, state);
@@ -293,12 +312,12 @@ int executeOp(CPUState *state) {
         case 0x8c: case 0x8d: case 0x8e: case 0x8f:
         case 0xce:
         {
-            if (*opcode == 0xce || *opcode == 0x8e) opcycles = 7;
-            else opcycles = 4;
+            if (*opcode == 0xce || *opcode == 0x8e) st.opcycles = 7;
+            else st.opcycles = 4;
             byte r2;
             //immediate
             if (*opcode == 0xce) {
-                r2 = opcode[1]; state->pc++;
+                r2 = opcode[1]; st.opbytes = 2;
             } else {
                 r2 = arithmeticOperand(*opcode - 0x88, state);
             }
@@ -312,11 +331,11 @@ int executeOp(CPUState *state) {
         case 0x94: case 0x95: case 0x96: case 0x97:
         case 0xd6:
         {
-            if (*opcode == 0xd6 || *opcode == 0x96) opcycles = 7;
-            else opcycles = 4;
+            if (*opcode == 0xd6 || *opcode == 0x96) st.opcycles = 7;
+            else st.opcycles = 4;
             unsigned int r2;
             if (*opcode == 0xd6) {
-                r2 = opcode[1]; state->pc++;
+                r2 = opcode[1]; st.opbytes = 2;
             } else {
                 r2 = arithmeticOperand(*opcode - 0x90, state);
             }
@@ -334,15 +353,15 @@ int executeOp(CPUState *state) {
         case 0x9c: case 0x9d: case 0x9e: case 0x9f:
         case 0xde:
         {
-            if (*opcode == 0xde || *opcode == 0x9e) opcycles = 7;
-            else opcycles = 4;
+            if (*opcode == 0xde || *opcode == 0x9e) st.opcycles = 7;
+            else st.opcycles = 4;
             //from the 8080 programmers' manual:
             //the carry is internally added to the
             //second operand and subtraction then performed with normal
             //two's complement rules.
             unsigned int r2;
             if (*opcode == 0xde) {
-                r2 = opcode[1]; state->pc++;
+                r2 = opcode[1]; st.opbytes = 2;
             } else {
                 r2 = arithmeticOperand(*opcode - 0x98, state);
             }
@@ -359,11 +378,11 @@ int executeOp(CPUState *state) {
         case 0xa4: case 0xa5: case 0xa6: case 0xa7:
         case 0xe6:
         {
-            if (*opcode == 0xe6 || *opcode == 0xa6) opcycles = 7;
-            else opcycles = 4;
+            if (*opcode == 0xe6 || *opcode == 0xa6) st.opcycles = 7;
+            else st.opcycles = 4;
             byte r2;
             if (*opcode == 0xe6) {
-                r2 = opcode[1]; state->pc++;
+                r2 = opcode[1]; st.opbytes = 2;
             } else {
                 r2 = arithmeticOperand(*opcode - 0xa0, state);
             }
@@ -380,11 +399,11 @@ int executeOp(CPUState *state) {
         case 0xac: case 0xad: case 0xae: case 0xaf:
         case 0xee:
         {
-            if (*opcode == 0xee || *opcode == 0xae) opcycles = 7;
-            else opcycles = 4;
+            if (*opcode == 0xee || *opcode == 0xae) st.opcycles = 7;
+            else st.opcycles = 4;
             byte r2;
             if (*opcode == 0xee) {
-                r2 = opcode[1]; state->pc++;
+                r2 = opcode[1]; st.opbytes = 2;
             } else {
                 r2 = arithmeticOperand(*opcode - 0xa8, state);
             }
@@ -398,11 +417,11 @@ int executeOp(CPUState *state) {
         case 0xb4: case 0xb5: case 0xb6: case 0xb7:
         case 0xf6:
         {
-            if (*opcode == 0xf6 || *opcode == 0xb6) opcycles = 7;
-            else opcycles = 4;
+            if (*opcode == 0xf6 || *opcode == 0xb6) st.opcycles = 7;
+            else st.opcycles = 4;
             byte r2;
             if (*opcode == 0xf6) {
-                r2 = opcode[1]; state->pc++;
+                r2 = opcode[1]; st.opbytes = 2;
             } else {
                 r2 = arithmeticOperand(*opcode - 0xb0, state);
             }
@@ -416,14 +435,14 @@ int executeOp(CPUState *state) {
         case 0xbc: case 0xbd: case 0xbe: case 0xbf:
         case 0xfe:
         {
-            if (*opcode == 0xfe || *opcode == 0xbe) opcycles = 7;
-            else opcycles = 4;
+            if (*opcode == 0xfe || *opcode == 0xbe) st.opcycles = 7;
+            else st.opcycles = 4;
             //CMP does not affect the accumulator.
             //arg is subtracted from accumulator internally to
             //set flags.
             unsigned int r2;
             if (*opcode == 0xfe) {
-                r2 = opcode[1]; state->pc++;
+                r2 = opcode[1]; st.opbytes = 2;
             } else {
                 r2 = arithmeticOperand(*opcode - 0xb8, state);
             }
@@ -437,7 +456,7 @@ int executeOp(CPUState *state) {
         //RLC
         case 0x07:
         {
-            opcycles = 4;
+            st.opcycles = 4;
             state->fl.cy = state->reg[0] >= 0x80;
             state->reg[0] <<= 1;
             state->reg[0] += state->fl.cy;
@@ -446,7 +465,7 @@ int executeOp(CPUState *state) {
         //RRC
         case 0x0f:
         {
-            opcycles = 4;
+            st.opcycles = 4;
             state->fl.cy = state->reg[0] & 0x01;
             state->reg[0] >>= 1;
             state->reg[0] += state->fl.cy * 0x80;
@@ -455,7 +474,7 @@ int executeOp(CPUState *state) {
         //RAL
         case 0x17:
         {
-            opcycles = 4;
+            st.opcycles = 4;
             int tmp = state->fl.cy;
             state->fl.cy = state->reg[0] >= 0x80;
             state->reg[0] <<= 1;
@@ -465,7 +484,7 @@ int executeOp(CPUState *state) {
         //RAR
         case 0x1f:
         {
-            opcycles = 4;
+            st.opcycles = 4;
             int tmp = state->fl.cy;
             state->fl.cy = state->reg[0] & 0x01;
             state->reg[0] >>= 1;
@@ -475,7 +494,7 @@ int executeOp(CPUState *state) {
         //PUSH
         case 0xc5: case 0xd5: case 0xe5: case 0xf5:
         {
-            opcycles = 11;
+            st.opcycles = 11;
             if (state->sp < 2) {
                 fprintf(stderr, "Stack overflow on PUSH!\n");
                 exit(1);
@@ -499,7 +518,7 @@ int executeOp(CPUState *state) {
         //POP
         case 0xc1: case 0xd1: case 0xe1: case 0xf1:
         {
-            opcycles = 10;
+            st.opcycles = 10;
             if (state->sp > state->mem_size - 2) {
                 fprintf(stderr, "Stack underflow on POP!\n");
                 exit(1);
@@ -525,7 +544,7 @@ int executeOp(CPUState *state) {
         //DAD
         case 0x09: case 0x19: case 0x29: case 0x39:
         {
-            opcycles = 10;
+            st.opcycles = 10;
             int r1 = 2*((*opcode - 0x09)/0x10) + 1;
             int arg1;
             if (r1 < 7) {
@@ -543,7 +562,7 @@ int executeOp(CPUState *state) {
         //INX
         case 0x03: case 0x13: case 0x23: case 0x33:
         {
-            opcycles = 5;
+            st.opcycles = 5;
             int r1 = 2*((*opcode - 0x03)/0x10) + 1;
             if (r1 < 7) {
                 uint16_t res = (state->reg[r1] << 8 | state->reg[r1 + 1]) + 1;
@@ -557,7 +576,7 @@ int executeOp(CPUState *state) {
         //DCX
         case 0x0b: case 0x1b: case 0x2b: case 0x3b:
         {
-            opcycles = 5;
+            st.opcycles = 5;
             int r1 = 2*((*opcode - 0x0b)/0x10) + 1;
             if (r1 < 7) {
                 uint16_t res = (state->reg[r1] << 8 | state->reg[r1 + 1]) - 1;
@@ -571,7 +590,7 @@ int executeOp(CPUState *state) {
         //XCHG
         case 0xeb:
         {
-            opcycles = 5;
+            st.opcycles = 5;
             uint16_t tmp = state->reg[5] << 8 | state->reg[6];
             state->reg[5] = state->reg[3];
             state->reg[6] = state->reg[4];
@@ -582,7 +601,7 @@ int executeOp(CPUState *state) {
         //XTHL
         case 0xe3:
         {
-            opcycles = 18;
+            st.opcycles = 18;
             if (state->sp > state->mem_size - 2) {
                 fprintf(stderr, "Stack underflow on XTHL!\n");
                 exit(1);
@@ -597,14 +616,14 @@ int executeOp(CPUState *state) {
         //SPHL
         case 0xf9:
         {
-            opcycles = 5;
+            st.opcycles = 5;
             state->sp = state->reg[5] << 8 | state->reg[6];
             break;
         }
         //LXI
         case 0x01: case 0x11: case 0x21: case 0x31:
         {
-            opcycles = 10;
+            st.opcycles = 10;
             int r1 = 2*((*opcode - 0x01)/0x10) + 1;
             if (r1 < 7) {
                 state->reg[r1] = opcode[2];
@@ -612,57 +631,57 @@ int executeOp(CPUState *state) {
             } else { //LXI SP
                 state->sp = opcode[2] << 8 | opcode[1];
             }
-            state->pc += 2;
+            st.opbytes = 3;
             break;
         }
         //MVI
         case 0x06: case 0x0e: case 0x16: case 0x1e:
         case 0x26: case 0x2e: case 0x36: case 0x3e:
         {            
-            opcycles = 7;
+            st.opcycles = 7;
             int dsttype = (*opcode - 0x06) / 0x08;
             if (dsttype < 6) {
                 state->reg[dsttype + 1] = opcode[1];
             } else if (dsttype == 6) {
-                opcycles = 10;
+                st.opcycles = 10;
                 uint16_t mem_adr = state->reg[5] << 8 | state->reg[6];
                 state->memory[mem_adr] = opcode[1];
             } else {
                 state->reg[0] = opcode[1];
             }
-            state->pc++;
+            st.opbytes = 2;
             break;
         }
         //STA
         case 0x32:
         {
-            opcycles = 13;
+            st.opcycles = 13;
             uint16_t mem_adr = opcode[2] << 8 | opcode[1];
             if (mem_adr > state->mem_size - 1) {
                 fprintf(stderr, "Address past end of memory for STA!\n");
                 exit(1);
             }
             state->memory[mem_adr] = state->reg[0];
-            state->pc += 2;
+            st.opbytes = 3;
             break;
         }
         //LDA
         case 0x3a:
         {
-            opcycles = 13;
+            st.opcycles = 13;
             uint16_t mem_adr = opcode[2] << 8 | opcode[1];
             if (mem_adr > state->mem_size - 1) {
                 fprintf(stderr, "Address past end of memory for LDA!\n");
                 exit(1);
             }
             state->reg[0] = state->memory[mem_adr];
-            state->pc += 2;
+            st.opbytes = 3;
             break;
         }
         //SHLD
         case 0x22:
         {
-            opcycles = 16;
+            st.opcycles = 16;
             uint16_t mem_adr = opcode[2] << 8 | opcode[1];
             if (mem_adr > state->mem_size - 2) {
                 fprintf(stderr, "Address past end of memory for SHLD!\n");
@@ -670,13 +689,13 @@ int executeOp(CPUState *state) {
             }
             state->memory[mem_adr] = state->reg[6];
             state->memory[mem_adr + 1] = state->reg[5];
-            state->pc += 2;
+            st.opbytes = 3;
             break;
         }
         //LHLD
         case 0x2a:
         {
-            opcycles = 16;
+            st.opcycles = 16;
             uint16_t mem_adr = opcode[2] << 8 | opcode[1];
             if (mem_adr > state->mem_size - 2) {
                 fprintf(stderr, "Address past end of memory for LHLD!\n");
@@ -684,25 +703,27 @@ int executeOp(CPUState *state) {
             }
             state->reg[6] = state->memory[mem_adr];
             state->reg[5] = state->memory[mem_adr + 1];
-            state->pc += 2;
+            st.opbytes = 3;
             break;
         }
         //PCHL
         case 0xe9:
         {
-            opcycles = 5;
+            st.opcycles = 5;
             uint16_t mem_adr = state->reg[5] << 8 | state->reg[6];
             if (mem_adr > state->mem_size - 1) {
                 fprintf(stderr, "PCHL jump to invalid address!\n");
                 exit(1);
             }
-            state->pc = mem_adr - 1;
+            state->pc = mem_adr;
+            st.opbytes = 0;
             break;
         }
         //JMP
         case 0xc3:
         {
-            opcycles = 10;
+            st.opcycles = 10;
+            st.opbytes = 0;
             int failure = jump_if(1, opcode[2] << 8 | opcode[1], state);
             if (failure) {
                 fprintf(stderr, "JMP to invalid address!\n");
@@ -714,13 +735,14 @@ int executeOp(CPUState *state) {
         case 0xc2: case 0xca: case 0xd2: case 0xda:
         case 0xe2: case 0xea: case 0xf2: case 0xfa:
         {
-            opcycles = 10;
+            st.opcycles = 10;
             int cflags[4] = {state->fl.z, state->fl.cy,
                              state->fl.p, state->fl.s};
             int ftype = (*opcode - 0xc2) / 0x10;
             int positive = (*opcode - 0xc2) % 0x10 > 0;
             int flag = cflags[ftype];
             flag = positive ? flag : !flag;
+            st.opbytes = flag ? 0 : 3;
             int failure = jump_if(flag, opcode[2] << 8 | opcode[1], state);
             if (failure) {
                 static const char freprs[8][3] =
@@ -735,7 +757,8 @@ int executeOp(CPUState *state) {
         //CALL
         case 0xcd:
         {
-            opcycles = 17;
+            st.opcycles = 17;
+            st.opbytes = 0;
             //push return address to stack
             if (state->sp < 2) {
                 fprintf(stderr, "Stack overflow on CALL!\n");
@@ -757,15 +780,16 @@ int executeOp(CPUState *state) {
         case 0xc4: case 0xcc: case 0xd4: case 0xdc:
         case 0xe4: case 0xec: case 0xf4: case 0xfc:
         {
-            opcycles = 11;
+            st.opcycles = 11;
             int cflags[4] = {state->fl.z, state->fl.cy,
                              state->fl.p, state->fl.s};
             int ftype = (*opcode - 0xc4) / 0x10;
             int positive = (*opcode - 0xc4) % 0x10 > 0;
             int flag = cflags[ftype];
             flag = positive ? flag : !flag;
+            st.opbytes = flag ? 0 : 3;
             if (flag) {
-                opcycles = 17;
+                st.opcycles = 17;
                 //push return address to stack
                 if (state->sp < 2) {
                     fprintf(stderr, "Stack overflow on CALL!\n");
@@ -790,7 +814,8 @@ int executeOp(CPUState *state) {
         //RET
         case 0xc9:
         {
-            opcycles = 10;
+            st.opcycles = 10;
+            st.opbytes = 0;
             if (state->sp > state->mem_size - 2) {
                 fprintf(stderr, "Stack underflow on RET!\n");
                 exit(1);
@@ -802,22 +827,23 @@ int executeOp(CPUState *state) {
                 fprintf(stderr, "RET to invalid address!\n");
                 exit(1);
             }
-            state->pc = mem_adr - 1;
+            state->pc = mem_adr;
             break;
         }
         //RNZ, RZ, RNC, RC, RPO, RPE, RP, RM
         case 0xc0: case 0xc8: case 0xd0: case 0xd8:
         case 0xe0: case 0xe8: case 0xf0: case 0xf8:
         {
-            opcycles = 5;
+            st.opcycles = 5;
             int cflags[4] = {state->fl.z, state->fl.cy,
                              state->fl.p, state->fl.s};
             int ftype = (*opcode - 0xc0) / 0x10;
             int positive = (*opcode - 0xc0) % 0x10 > 0;
             int flag = cflags[ftype];
             flag = positive ? flag : !flag;
+            st.opbytes = flag ? 0 : 1;
             if (flag) {
-                opcycles = 11;
+                st.opcycles = 11;
                 //pop return address off stack
                 if (state->sp > state->mem_size - 2) {
                     fprintf(stderr, "Stack underflow on RET!\n");
@@ -835,7 +861,7 @@ int executeOp(CPUState *state) {
                         freprs[(*opcode - 0xc0)/0x08]);
                     exit(1);
                 }
-                state->pc = mem_adr - 1;
+                state->pc = mem_adr;
             }
             break;
         }
@@ -843,7 +869,8 @@ int executeOp(CPUState *state) {
         case 0xc7: case 0xcf: case 0xd7: case 0xdf:
         case 0xe7: case 0xef: case 0xf7: case 0xff:
         {
-            opcycles = 11;
+            st.opcycles = 11;
+            st.opbytes = 0;
             uint16_t rst_adr = (*opcode - 0xc7);
             //push return address onto stack and jump to
             //specified ISR
@@ -855,22 +882,21 @@ int executeOp(CPUState *state) {
             state->sp -= 2;
             state->memory[state->sp] = ret_adr & 0xff;
             state->memory[state->sp + 1] = ret_adr >> 8;
-            state->pc = rst_adr - 1;
+            state->pc = rst_adr;
             break;
         }
         //EI, DI
         case 0xf3: case 0xfb:
         {
-            opcycles = 4;
+            st.opcycles = 4;
             state->int_enable = (*opcode - 0xf3)/8;
             break;
         }
         //HLT
-        case 0x76: state->pc--; break;
+        case 0x76: st.opbytes = 0; break;
         default: unknownOp(); break;
     }
-    state->pc++;
-    return opcycles;
+    return st;
 }
 
 #endif //_CPU_H
