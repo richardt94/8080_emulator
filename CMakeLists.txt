@@ -106,3 +106,8 @@ add_subdirectory(tests)
 # Unit tests
 enable_testing()
 add_test(NAME test_cpu COMMAND test_cpu)
+
+# Integration test for CPU instructions
+if (EXISTS ${CMAKE_SOURCE_DIR}/tests/cpudiag.bin)
+  add_test(NAME cpudiag COMMAND cpudiag_shell ${CMAKE_SOURCE_DIR}/tests/cpudiag.bin)
+endif (EXISTS ${CMAKE_SOURCE_DIR}/tests/cpudiag.bin)

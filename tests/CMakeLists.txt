@@ -12,3 +12,10 @@ set(TEST_SOURCES
 
 add_executable(test_cpu ${TEST_SOURCES})
 target_link_libraries(test_cpu ${CHECK_LIBRARIES})
+
+#the "integration test" (needs cpudiag binary)
+set(CPUDIAG_SOURCES
+    cpudiag_shell.c
+)
+
+add_executable(cpudiag_shell ${CPUDIAG_SOURCES})
