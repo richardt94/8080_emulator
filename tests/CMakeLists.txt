@@ -1,4 +1,5 @@
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../src)
+include_directories(${CMAKE_SOURCE_DIR}/src)
+link_directories(${CMAKE_SOURCE_DIR}/src)
 
 # set CHECK_INSTALL_DIR to override search for Check
 
@@ -11,7 +12,7 @@ set(TEST_SOURCES
 )
 
 add_executable(test_cpu ${TEST_SOURCES})
-target_link_libraries(test_cpu ${CHECK_LIBRARIES})
+target_link_libraries(test_cpu ${CHECK_LIBRARIES} cpu)
 
 #the "integration test" (needs cpudiag binary)
 set(CPUDIAG_SOURCES
@@ -19,3 +20,4 @@ set(CPUDIAG_SOURCES
 )
 
 add_executable(cpudiag_shell ${CPUDIAG_SOURCES})
+target_link_libraries(cpudiag_shell cpu)

@@ -8,6 +8,16 @@ set(DISASSEMBLE_HEADERS
 
 add_executable(disassemble ${DISASSEMBLE_SOURCES} ${DISASSEMBLE_HEADERS})
 
+set(CPU_SOURCES
+  cpu.c
+)
+
+set(CPU_HEADERS
+  cpu.h
+)
+
+add_library(cpu STATIC ${CPU_SOURCES} ${CPU_HEADERS})
+
 install(TARGETS disassemble
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
