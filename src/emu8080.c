@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
     window = SDL_CreateWindow("Space Invaders", SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED, window_width, window_height, SDL_WINDOW_SHOWN);
     if (window == NULL) {
-        fprintf(stderr, "SDL could not create a window - error %s\n", SDL_GetError);
+        fprintf(stderr, "SDL could not create a window - error %s\n", SDL_GetError());
     }
 
     screenSurface = SDL_GetWindowSurface(window);
