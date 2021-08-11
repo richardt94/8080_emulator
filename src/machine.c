@@ -40,22 +40,22 @@ static void handleOutput(byte port, Machine *m) {
 }
 
 void stepFrame(Machine *m) {
-    int nops = 0;
-    while (nops < cycles_per_frame / 2) {
+    int ncycles = 0;
+    while (ncycles < cycles_per_frame / 2) {
         // fire input port for shift register
         m->cs->ports[3] = (m->shift_reg >> (8 - m->shift_amt)) & 0xff;
-        nops += stepCPU(m->cs);
+        ncycles += stepCPU(m->cs);
         if (m->cs->write_flag >= 0) handleOutput(m->cs->write_flag, m);
     }
     //half screen (RST 1 from computer archaeology space invaders article)
-    interruptCPU(m->cs, 0xcf);
-    while (nops < cycles_per_frame) {
+    // interruptCPU(m->cs, 0xcf);
+    while (ncycles < cycles_per_frame) {
         m->cs->ports[3] = (m->shift_reg << m->shift_amt) >> 8;
-        nops += stepCPU(m->cs);
+        ncycles += stepCPU(m->cs);
         if (m->cs->write_flag >= 0) handleOutput(m->cs->write_flag, m);
     }
     //vblank (RST 2)
-    interruptCPU(m->cs, 0xd7);
+    // interruptCPU(m->cs, 0xd7);
 }
 
 

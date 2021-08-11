@@ -50,6 +50,8 @@ int main(int argc, char **argv) {
     for (int fidx = 1; fidx < argc; fidx++) {
         FILE *bin_file = fopen(argv[1], "rb");
 
+        fprintf(stderr, "Reading file %s into memory at 0x%04x\n",
+            argv[fidx], memctr);
         //size of file in bytes
         fseek(bin_file, 0L, SEEK_END);
         int fsize = ftell(bin_file);
@@ -61,13 +63,15 @@ int main(int argc, char **argv) {
         }
         fread(m->cs->memory + memctr, sizeof(byte), fsize, bin_file);
         fclose(bin_file);
+        memctr += fsize;
+        fprintf(stderr, "File ends at 0x%04x\n",
+            memctr - 1);
     }
 
     while (1) {
-        fprintf(stderr, "Doing a frame\n");
+        fprintf(stderr, "Executing a frame\n");
         stepFrame(m);
-        fprintf(stderr, "Done a frame\n");
-        showBuffer(m->framebuffer, screenSurface);
+        // showBuffer(m->framebuffer, screenSurface);
         SDL_UpdateWindowSurface(window);
     }
 
@@ -98,7 +102,7 @@ static void showBuffer(const byte *buffer, SDL_Surface *surf) {
 
 static void setPixel(SDL_Surface *surf, int x, int y, int val) {
     //this assumes 32 bpp
-    uint8_t *pixel = surf->pixels;
-    pixel += (y * surf->pitch) + (x * sizeof(uint32_t));
-    *((uint32_t *) pixel) = 0xffffffff * val;
+    // uint8_t *pixel = surf->pixels;
+    // pixel += (y * surf->pitch) + (x * sizeof(uint32_t));
+    // *((uint32_t *) pixel) = 0xffffffff * val;
 }
