@@ -26,6 +26,15 @@ typedef struct CPUState {
     Flags fl;
     byte int_enable;
     unsigned int mem_size;
+
+    //this will be equal to the port number when the most 
+    //recent executed instruction was OUT
+    //- this is needed to trigger machine hardware
+    //that is signalled by the CPU writing to output ports.
+    //set to -1 otherwise.
+    int write_flag;
+    //I/O address space
+    byte ports[256];
 } CPUState;
 
 //create a new CPU state with mem_size bytes of RAM

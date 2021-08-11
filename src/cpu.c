@@ -5,7 +5,7 @@
 #include "cpu.h"
 
 CPUState *newState(unsigned int mem_size) {
-    CPUState* cs = malloc(sizeof(CPUState));
+    CPUState *cs = malloc(sizeof(CPUState));
     cs->fl.z = 0;
     cs->fl.s = 0;
     cs->fl.p = 0;
@@ -21,6 +21,10 @@ CPUState *newState(unsigned int mem_size) {
 
     cs->memory = (byte *) calloc(mem_size, sizeof(byte));
     cs->mem_size = mem_size;
+
+    //I/O bus
+    cs->write_flag = -1;
+
     return cs;
 }
 
@@ -107,6 +111,7 @@ int interruptCPU(CPUState *state, byte opcode) {
 //instruction implementations
 //returns number of cycles for instruction - 0 for halt
 static OpStats executeOp(CPUState *state, byte *opcode) {
+    state->write_flag = -1;
     OpStats st;
     st.opcycles = 0;
     st.opbytes = 1;
@@ -864,6 +869,25 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
         {
             st.opcycles = 4;
             state->int_enable = (*opcode - 0xf3)/8;
+            break;
+        }
+        //IN
+        case 0xdb:
+        {
+            st.opbytes = 2;
+            st.opcycles = 10;
+            byte port = opcode[1];
+            state->reg[0] = state->ports[port];
+            break;
+        }
+        //OUT
+        case 0xd3:
+        {
+            st.opbytes = 2;
+            st.opcycles = 10;
+            byte port = opcode[1];
+            state->ports[port] = state->reg[0];
+            state->write_flag = port;
             break;
         }
         //HLT

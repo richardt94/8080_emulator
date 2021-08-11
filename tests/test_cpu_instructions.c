@@ -1262,6 +1262,32 @@ START_TEST (test_di_unchanged)
 }
 END_TEST
 
+START_TEST (test_in)
+{
+    cs->ports[0x83] = 0xfe;
+    cs->memory[0] = 0xdb;
+    cs->memory[1] = 0x83;
+    ck_assert_int_eq(stepCPU(cs), 10);
+    ck_assert_int_eq(cs->pc, 2);
+    ck_assert_int_eq(cs->reg[0], 0xfe);
+}
+END_TEST
+
+START_TEST (test_out)
+{
+    cs->reg[0] = 0xef;
+    cs->memory[0] = 0xd3;
+    cs->memory[1] = 0x38;
+    cs->memory[2] = 0x00;
+    ck_assert_int_eq(stepCPU(cs), 10);
+    ck_assert_int_eq(cs->ports[0x38], 0xef);
+    ck_assert_int_eq(cs->pc, 2);
+    ck_assert_int_eq(cs->write_flag, 0x38);
+    stepCPU(cs);
+    ck_assert_int_eq(cs->write_flag, -1);
+}
+END_TEST
+
 Suite *cpu_suite(void) {
     Suite *s;
 
@@ -1278,6 +1304,7 @@ Suite *cpu_suite(void) {
     TCase *tc_calls;
     TCase *tc_rets;
     TCase *tc_inter;
+    TCase *tc_io;
 
     s = suite_create("CPU Instructions");
 
@@ -1294,6 +1321,7 @@ Suite *cpu_suite(void) {
     tc_calls = tcase_create("Calls");
     tc_rets = tcase_create("Returns");
     tc_inter = tcase_create("Interrupt system instructions");
+    tc_io = tcase_create("I/O bus instructions");
 
     tcase_add_checked_fixture(tc_carry, state_setup, state_teardown);
     tcase_add_checked_fixture(tc_single, state_setup, state_teardown);
@@ -1308,6 +1336,7 @@ Suite *cpu_suite(void) {
     tcase_add_checked_fixture(tc_calls, state_setup, state_teardown);
     tcase_add_checked_fixture(tc_rets, state_setup, state_teardown);
     tcase_add_checked_fixture(tc_inter, state_setup, state_teardown);
+    tcase_add_checked_fixture(tc_io, state_setup, state_teardown);
 
     tcase_add_test(tc_carry, test_stc);
     tcase_add_test(tc_carry, test_cmc);
@@ -1420,6 +1449,9 @@ Suite *cpu_suite(void) {
     tcase_add_test(tc_inter, test_di);
     tcase_add_test(tc_inter, test_di_unchanged);
 
+    tcase_add_test(tc_io, test_in);
+    tcase_add_test(tc_io, test_out);
+
     suite_add_tcase(s, tc_carry);
     suite_add_tcase(s, tc_single);
     suite_add_tcase(s, tc_transfer);
@@ -1433,6 +1465,7 @@ Suite *cpu_suite(void) {
     suite_add_tcase(s, tc_calls);
     suite_add_tcase(s, tc_rets);
     suite_add_tcase(s, tc_inter);
+    suite_add_tcase(s, tc_io);
 
     return s;
 }
