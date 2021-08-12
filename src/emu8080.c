@@ -67,10 +67,17 @@ int main(int argc, char **argv) {
             memctr - 1);
     }
 
-    while (1) {
+    int quit = 0;
+    SDL_Event e;
+
+    while (!quit) {
         stepFrame(m);
         showBuffer(m->framebuffer, screenSurface);
         SDL_UpdateWindowSurface(window);
+
+        while (SDL_PollEvent(&e) != 0) {
+            if (e.type == SDL_QUIT) quit = 1;
+        }
     }
 
     destroyMachine(m);
