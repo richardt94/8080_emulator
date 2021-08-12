@@ -51,15 +51,16 @@ int main(int argc, char **argv) {
                     printf("%c", *str++);
                 // printf("\n");
             } else if (cs->reg[2] == 2) {
-                //accumulator is a single character (from cp/m programmers' manual here http://www.cpm.z80.de/manuals/cpm22-m.pdf)
+                //accumulator is a single character
+                //(from cp/m programmers' manual here http://www.cpm.z80.de/manuals/cpm22-m.pdf)
                 printf("%c", cs->reg[0]);
             }
-                //"return"
-                cs->pc += 3;
+            //"return"
+            cs->pc += 3;
         }
         //catch JMP $0000 (restart called at end of program)
         else if (cs->memory[cs->pc] == 0xc3 && (cs->memory[cs->pc+2] << 8 | cs->memory[cs->pc+1]) == 0) break;
-        else if (stepCPU(cs) == 1) break;
+        else if (stepCPU(cs) == 0) break;
     }
     printf("\n");
 

@@ -196,6 +196,8 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
         {
             st.opcycles = 4;
             uint16_t acc = state->reg[0];
+            //need to preserve carry if already set
+            int cflag = state->fl.cy;
             if ((acc & 0x0f) > 0x9 || state->fl.ac) {
                 if ((acc & 0x0f) > 0x09) state->fl.ac = 1;
                 else state->fl.ac = 0;
@@ -203,8 +205,10 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
             }
             if (acc >= 0xa0 || state->fl.cy) {
                 acc += 0x60;
+                cflag = 1;
             }
             set_result(acc, state);
+            state->fl.cy = cflag;
             break;
         }
         //CMA
