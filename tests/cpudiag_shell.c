@@ -32,19 +32,24 @@ int main(int argc, char **argv) {
     fread(cs->memory + 0x0100, sizeof(byte), fsize, bin_file);
     fclose(bin_file);
 
-    cs->memory[0] = 0xc3;
-    cs->memory[1] = 0x00;
-    cs->memory[2] = 0x01;
+    cs->memory[0] = 0x31;//lxi sp (for 8080PRE)
+    cs->memory[1] = 0x06;
+    cs->memory[2] = 0x00;
+    cs->memory[3] = 0xc3;//JMP to start of CP/M program
+    cs->memory[4] = 0x00;
+    cs->memory[5] = 0x01;
+    cs->memory[6] = 0xff;//this is the "stack pointer" address for 8080EX1
+    cs->memory[7] = 0xff;
 
     while (1) {
         //catch print calls (code copied and modified from emulator101)
         if (cs->memory[cs->pc] == 0xcd && cs->memory[cs->pc+1] == 0x05 && cs->memory[cs->pc+2] == 0x00) {
             if (cs->reg[2] == 9) {
                 uint16_t offset = (cs->reg[3]<<8) | (cs->reg[4]);    
-                char *str = &cs->memory[offset+3];
+                char *str = &cs->memory[offset];
                 while (*str != '$')
                     printf("%c", *str++);
-                printf("\n");
+                // printf("\n");
             } else if (cs->reg[2] == 2) {
                 //accumulator is a single character (from cp/m programmers' manual here http://www.cpm.z80.de/manuals/cpm22-m.pdf)
                 printf("%c", cs->reg[0]);
@@ -56,6 +61,7 @@ int main(int argc, char **argv) {
         else if (cs->memory[cs->pc] == 0xc3 && (cs->memory[cs->pc+2] << 8 | cs->memory[cs->pc+1]) == 0) break;
         else if (stepCPU(cs) == 1) break;
     }
+    printf("\n");
 
     destroyState(cs);
 
