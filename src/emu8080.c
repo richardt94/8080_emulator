@@ -95,10 +95,10 @@ static void showBuffer(const uint8_t *buffer, SDL_Surface *surf) {
        sinv_px_ind++) {
         int px_byte = sinv_px_ind / 8;
         int px_bit = sinv_px_ind % 8;
-        int px = (buffer[px_byte] >> (7 - px_bit)) & 0x01;
+        int px = (buffer[px_byte] >> (px_bit)) & 0x01;
         //x, y measured from top left
         int px_x = sinv_px_ind / 256;
-        int px_y = (sinv_px_ind % 256);
+        int px_y = 255 - (sinv_px_ind % 256);
         for (int xoff = 0; xoff < 3; xoff++) 
             for (int yoff = 0; yoff < 3; yoff++)
                 setPixel(surf, 3 * px_x + xoff, 3 * px_y + yoff, px);

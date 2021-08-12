@@ -34,8 +34,9 @@ void destroyState(CPUState *cs) {
 }
 
 //handling for unimplemented ops
-static void unknownOp() {
+static void unknownOp(CPUState *cs) {
     fprintf(stderr, "Error: unimplemented instruction. Exiting...\n");
+    fprintf(stderr, "Program counter is %04x\n", cs->pc);
     exit(1);
 }
 
@@ -147,9 +148,10 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
             }
             state->fl.ac = (res & 0x0f) == 0x0f;
             res++;
-            //INR does not affect carry. this is implicit
-            //as res (byte) will overflow when there is a carry.
+            //INR does not affect carry.
+            byte cy_old = state->fl.cy;
             set_flags(res, state);
+            state->fl.cy = cy_old;
             if (ri < 0) {
                 state->memory[mem_adr] = res;
             } else {
@@ -179,7 +181,9 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
             }
             state->fl.ac = (res & 0x0f) != 0x00;
             res--;
+            byte cy_old = state->fl.cy;
             set_flags(res, state);
+            state->fl.cy = cy_old;
             if (ri < 0) {
                 state->memory[mem_adr] = res;
             } else {
@@ -197,11 +201,9 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
                 else state->fl.ac = 0;
                 acc += 0x06;
             }
-            if (acc >= 0xa0 | state->fl.cy) {
-                if (acc >= 0xa0) state->fl.cy = 1;
-                else state->fl.cy = 0;
+            if (acc >= 0xa0 || state->fl.cy) {
                 acc += 0x60;
-            } 
+            }
             set_result(acc, state);
             break;
         }
@@ -476,6 +478,7 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
             st.opcycles = 11;
             if (state->sp < 2) {
                 fprintf(stderr, "Stack overflow on PUSH!\n");
+                fprintf(stderr, "Program counter is %04x\n", state->pc);
                 exit(1);
             }
             int r1 = 2*((*opcode - 0xc5)/0x10) + 1;
@@ -500,6 +503,7 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
             st.opcycles = 10;
             if (state->sp > state->mem_size - 2) {
                 fprintf(stderr, "Stack underflow on POP!\n");
+                fprintf(stderr, "Program counter is %04x\n", state->pc);
                 exit(1);
             }
             int r1 = 2*((*opcode - 0xc1)/0x10) + 1;
@@ -583,6 +587,7 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
             st.opcycles = 18;
             if (state->sp > state->mem_size - 2) {
                 fprintf(stderr, "Stack underflow on XTHL!\n");
+                fprintf(stderr, "Program counter is %04x\n", state->pc);
                 exit(1);
             }
             uint16_t tmp = state->reg[5] << 8 | state->reg[6];
@@ -638,6 +643,7 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
             uint16_t mem_adr = opcode[2] << 8 | opcode[1];
             if (mem_adr > state->mem_size - 1) {
                 fprintf(stderr, "Address past end of memory for STA!\n");
+                fprintf(stderr, "Program counter is %04x\n", state->pc);
                 exit(1);
             }
             state->memory[mem_adr] = state->reg[0];
@@ -651,6 +657,7 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
             uint16_t mem_adr = opcode[2] << 8 | opcode[1];
             if (mem_adr > state->mem_size - 1) {
                 fprintf(stderr, "Address past end of memory for LDA!\n");
+                fprintf(stderr, "Program counter is %04x\n", state->pc);
                 exit(1);
             }
             state->reg[0] = state->memory[mem_adr];
@@ -664,6 +671,7 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
             uint16_t mem_adr = opcode[2] << 8 | opcode[1];
             if (mem_adr > state->mem_size - 2) {
                 fprintf(stderr, "Address past end of memory for SHLD!\n");
+                fprintf(stderr, "Program counter is %04x\n", state->pc);
                 exit(1);
             }
             state->memory[mem_adr] = state->reg[6];
@@ -678,6 +686,7 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
             uint16_t mem_adr = opcode[2] << 8 | opcode[1];
             if (mem_adr > state->mem_size - 2) {
                 fprintf(stderr, "Address past end of memory for LHLD!\n");
+                fprintf(stderr, "Program counter is %04x\n", state->pc);
                 exit(1);
             }
             state->reg[6] = state->memory[mem_adr];
@@ -692,6 +701,7 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
             uint16_t mem_adr = state->reg[5] << 8 | state->reg[6];
             if (mem_adr > state->mem_size - 1) {
                 fprintf(stderr, "PCHL jump to invalid address!\n");
+                fprintf(stderr, "Program counter is %04x\n", state->pc);
                 exit(1);
             }
             state->pc = mem_adr;
@@ -706,6 +716,7 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
             int failure = jump_if(1, opcode[2] << 8 | opcode[1], state);
             if (failure) {
                 fprintf(stderr, "JMP to invalid address!\n");
+                fprintf(stderr, "Program counter is %04x\n", state->pc);
                 exit(1);
             }
             break;
@@ -729,6 +740,7 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
                                          "PO", "PE", "P", "M"};
                 fprintf(stderr, "J%s to invalid address!\n",
                     freprs[(*opcode - 0xc2)/0x08]);
+                fprintf(stderr, "Program counter is %04x\n", state->pc);
                 exit(1);
             }
             break;
@@ -741,6 +753,7 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
             //push return address to stack
             if (state->sp < 2) {
                 fprintf(stderr, "Stack overflow on CALL!\n");
+                fprintf(stderr, "Program counter is %04x\n", state->pc);
                 exit(1);
             }
             state->sp -= 2;
@@ -751,6 +764,7 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
             int failure = jump_if(1, opcode[2] << 8 | opcode[1], state);
             if (failure) {
                 fprintf(stderr, "CALL to invalid address!\n");
+                fprintf(stderr, "Program counter is %04x\n", state->pc);
                 exit(1);
             }
             break;
@@ -772,6 +786,7 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
                 //push return address to stack
                 if (state->sp < 2) {
                     fprintf(stderr, "Stack overflow on CALL!\n");
+                    fprintf(stderr, "Program counter is %04x\n", state->pc);
                     exit(1);
                 }
                 state->sp -= 2;
@@ -786,6 +801,7 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
                                          "PO", "PE", "P", "M"};
                 fprintf(stderr, "C%s to invalid address!\n",
                     freprs[(*opcode - 0xc4)/0x08]);
+                fprintf(stderr, "Program counter is %04x\n", state->pc);
                 exit(1);
             }
             break;
@@ -797,6 +813,7 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
             st.opbytes = 0;
             if (state->sp > state->mem_size - 2) {
                 fprintf(stderr, "Stack underflow on RET!\n");
+                fprintf(stderr, "Program counter is %04x\n", state->pc);
                 exit(1);
             }
             uint16_t mem_adr = state->memory[state->sp + 1] << 8 |
@@ -827,6 +844,7 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
                 //pop return address off stack
                 if (state->sp > state->mem_size - 2) {
                     fprintf(stderr, "Stack underflow on RET!\n");
+                    fprintf(stderr, "Program counter is %04x\n", state->pc);
                     exit(1);
                 }
                 uint16_t mem_adr = state->memory[state->sp + 1] << 8 |
@@ -839,6 +857,7 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
                                              "PO", "PE", "P", "M"};
                     fprintf(stderr, "R%s to invalid address!\n",
                         freprs[(*opcode - 0xc0)/0x08]);
+                    fprintf(stderr, "Program counter is %04x\n", state->pc);
                     exit(1);
                 }
                 state->pc = mem_adr;
@@ -857,6 +876,7 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
             uint16_t ret_adr = state->pc + 1;
             if (state->sp < 2) {
                 fprintf(stderr, "Stack overflow on RST!\n");
+                fprintf(stderr, "Program counter is %04x\n", state->pc);
                 exit(1);
             }
             state->sp -= 2;
@@ -893,7 +913,7 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
         }
         //HLT
         case 0x76: st.opbytes = 0; break;
-        default: unknownOp(); break;
+        default: unknownOp(state); break;
     }
     return st;
 }
