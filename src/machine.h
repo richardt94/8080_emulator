@@ -14,7 +14,7 @@ typedef struct Machine {
     CPUState *cs;
     uint16_t shift_reg;
     int shift_amt;
-    byte *framebuffer;
+    uint8_t *framebuffer;
 } Machine;
 
 //make a new machine struct and destroy an existing one

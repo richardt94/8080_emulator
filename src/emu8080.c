@@ -2,7 +2,6 @@
 #include <stdio.h>
 
 #include "machine.h"
-#include "cpu.h"
 
 /* 
    Emulator "shell" that wraps the complete machine emulation with
@@ -48,7 +47,7 @@ int main(int argc, char **argv) {
     int memctr = 0;
     Machine *m = newMachine();
     for (int fidx = 1; fidx < argc; fidx++) {
-        FILE *bin_file = fopen(argv[1], "rb");
+        FILE *bin_file = fopen(argv[fidx], "rb");
 
         fprintf(stderr, "Reading file %s into memory at 0x%04x\n",
             argv[fidx], memctr);
@@ -69,9 +68,8 @@ int main(int argc, char **argv) {
     }
 
     while (1) {
-        fprintf(stderr, "Executing a frame\n");
         stepFrame(m);
-        // showBuffer(m->framebuffer, screenSurface);
+        showBuffer(m->framebuffer, screenSurface);
         SDL_UpdateWindowSurface(window);
     }
 
@@ -83,17 +81,17 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-static void showBuffer(const byte *buffer, SDL_Surface *surf) {
+static void showBuffer(const uint8_t *buffer, SDL_Surface *surf) {
     //write each pixel as a 3*3 block on the surface
     for (int sinv_px_ind = 0;
-        sinv_px_ind < sinv_height * sinv_width;
-        sinv_px_ind++) {
+       sinv_px_ind < sinv_height * sinv_width;
+       sinv_px_ind++) {
         int px_byte = sinv_px_ind / 8;
         int px_bit = sinv_px_ind % 8;
-        int px = buffer[px_byte] >> (7 - px_bit) & 0x01;
+        int px = (buffer[px_byte] >> (7 - px_bit)) & 0x01;
         //x, y measured from top left
         int px_x = sinv_px_ind / 256;
-        int px_y = 255 - (sinv_px_ind % 256);
+        int px_y = (sinv_px_ind % 256);
         for (int xoff = 0; xoff < 3; xoff++) 
             for (int yoff = 0; yoff < 3; yoff++)
                 setPixel(surf, 3 * px_x + xoff, 3 * px_y + yoff, px);
@@ -102,7 +100,7 @@ static void showBuffer(const byte *buffer, SDL_Surface *surf) {
 
 static void setPixel(SDL_Surface *surf, int x, int y, int val) {
     //this assumes 32 bpp
-    // uint8_t *pixel = surf->pixels;
-    // pixel += (y * surf->pitch) + (x * sizeof(uint32_t));
-    // *((uint32_t *) pixel) = 0xffffffff * val;
+    uint8_t *pixel = surf->pixels;
+    pixel += (y * surf->pitch) + (x * sizeof(uint32_t));
+    *((uint32_t *) pixel) = 0xffffffff * val;
 }

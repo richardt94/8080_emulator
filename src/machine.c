@@ -12,7 +12,7 @@ Machine *newMachine() {
     //(8K is ROM but let's just have it all as RAM)
     CPUState *cs = newState(0x4000);
     //Video RAM starts at 9K
-    byte *framebuffer = &cs->memory[0x2400];
+    uint8_t *framebuffer = (uint8_t *) &cs->memory[0x2400];
     //coin slot is port 1, bit 0.
     //when there is no coin this bit will be set.
     cs->ports[1] = 0x01;
@@ -20,6 +20,7 @@ Machine *newMachine() {
     m->cs = cs;
     m->shift_reg = 0;
     m->shift_amt = 0;
+    m->framebuffer = framebuffer;
     return m;
 }
 
@@ -48,14 +49,14 @@ void stepFrame(Machine *m) {
         if (m->cs->write_flag >= 0) handleOutput(m->cs->write_flag, m);
     }
     //half screen (RST 1 from computer archaeology space invaders article)
-    // interruptCPU(m->cs, 0xcf);
+    interruptCPU(m->cs, 0xcf);
     while (ncycles < cycles_per_frame) {
         m->cs->ports[3] = (m->shift_reg << m->shift_amt) >> 8;
         ncycles += stepCPU(m->cs);
         if (m->cs->write_flag >= 0) handleOutput(m->cs->write_flag, m);
     }
     //vblank (RST 2)
-    // interruptCPU(m->cs, 0xd7);
+    interruptCPU(m->cs, 0xd7);
 }
 
 

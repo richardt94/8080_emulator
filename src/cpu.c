@@ -804,6 +804,7 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
             state->sp += 2;
             if (mem_adr >= state->mem_size) {
                 fprintf(stderr, "RET to invalid address!\n");
+                fprintf(stderr, "Program counter at 0x%04x\n", state->pc);
                 exit(1);
             }
             state->pc = mem_adr;
