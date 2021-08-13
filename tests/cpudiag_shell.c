@@ -51,9 +51,9 @@ int main(int argc, char **argv) {
                     printf("%c", *str++);
                 // printf("\n");
             } else if (cs->reg[2] == 2) {
-                //accumulator is a single character
+                //accumulator is a single character (or maybe E register)
                 //(from cp/m programmers' manual here http://www.cpm.z80.de/manuals/cpm22-m.pdf)
-                printf("%c", cs->reg[0]);
+                printf("%c", cs->reg[4]);
             }
             //"return"
             cs->pc += 3;

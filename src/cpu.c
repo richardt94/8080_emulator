@@ -372,11 +372,10 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
                 r2 = arithmeticOperand(*opcode - 0xa0, state);
             }
             uint16_t res = (uint16_t) state->reg[0] & (uint16_t) r2;
-            set_result(res, state);
             //the behaviour of bitwise comparisons and the ac flag
-            //is poorly documented in the programmers' manual,
-            //but CPUDIAG suggests it should always be reset.
-            state->fl.ac = 0;
+            //is poorly documented in the programmers' manual
+            state->fl.ac = ((state->reg[0] | r2) & 0x08) != 0;
+            set_result(res, state);
             break;
         }
         //XRA, XRI
