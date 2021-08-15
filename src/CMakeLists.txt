@@ -18,6 +18,25 @@ set(CPU_HEADERS
 
 add_library(cpu STATIC ${CPU_SOURCES} ${CPU_HEADERS})
 
+set(EMU8080_SOURCES
+  emu8080.c
+  machine.c
+  cpu.c
+)
+
+set(EMU8080_HEADERS
+  machine.h
+  cpu.h
+)
+
+if(SDL2_FOUND)
+  add_executable(emu8080 ${EMU8080_SOURCES} ${EMU8080_HEADERS})
+  target_link_libraries(emu8080 SDL2)
+  install(TARGETS emu8080
+    RUNTIME DESTINATION bin
+  )
+endif(SDL2_FOUND)
+
 install(TARGETS disassemble
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib

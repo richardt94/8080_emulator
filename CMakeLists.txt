@@ -29,7 +29,8 @@
 
 project(Emu8080 C)
 
-cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
+#3.12.1 is needed for finding SDL2
+cmake_minimum_required(VERSION 3.12.1 FATAL_ERROR)
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 ###############################################################################
@@ -96,6 +97,10 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/config.h.in
 include_directories(BEFORE ${CMAKE_CURRENT_BINARY_DIR})
 add_definitions(-DHAVE_CONFIG_H)
 set(CONFIG_HEADER ${CMAKE_CURRENT_BINARY_DIR}/config.h)
+
+###############################################################################
+# find SDL2
+find_package(SDL2)
 
 ###############################################################################
 # Subdirectories
