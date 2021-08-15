@@ -286,7 +286,7 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
                 r2 = arithmeticOperand(*opcode - 0x80, state);
             }
             //avoid overflow with 16-bit precision
-            uint16_t res = (uint16_t) state->reg[0] + (uint16_t) r2;
+            uint16_t res = state->reg[0] + r2;
             //set aux carry
             state->fl.ac = (state->reg[0] & 0x0f) + (r2 & 0x0f) > 0x0f;
             set_result(res, state);
@@ -306,7 +306,7 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
             } else {
                 r2 = arithmeticOperand(*opcode - 0x88, state);
             }
-            uint16_t res = (uint16_t) state->reg[0] + (uint16_t) r2 + state->fl.cy;
+            uint16_t res = state->reg[0] + r2 + state->fl.cy;
             state->fl.ac = (state->reg[0] & 0x0f) + (r2 & 0x0f) + state->fl.cy > 0x0f;
             set_result(res, state);
             break;
@@ -318,16 +318,14 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
         {
             if (*opcode == 0xd6 || *opcode == 0x96) st.opcycles = 7;
             else st.opcycles = 4;
-            unsigned int r2;
+            byte r2;
             if (*opcode == 0xd6) {
-                r2 = opcode[1]; st.opbytes = 2;
+                r2 = ~opcode[1]; st.opbytes = 2;
             } else {
-                r2 = arithmeticOperand(*opcode - 0x90, state);
+                r2 = ~arithmeticOperand(*opcode - 0x90, state);
             }
-            //this is necessary to correctly set the carry when subtracting zero
-            r2 = 256 - r2;
-            uint16_t res = (uint16_t) state->reg[0] + (uint16_t) r2;
-            state->fl.ac = (state->reg[0] & 0x0f) + (r2 & 0x0f) > 0x0f;
+            uint16_t res = state->reg[0] + r2 + 1;
+            state->fl.ac = (state->reg[0] & 0x0f) + (r2 & 0x0f) + 1 > 0x0f;
             set_result(res, state);
             //carry flag works opposite to addition on 8080 (but not aux carry)
             state->fl.cy = !state->fl.cy;
@@ -344,16 +342,14 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
             //the carry is internally added to the
             //second operand and subtraction then performed with normal
             //two's complement rules.
-            unsigned int r2;
+            byte r2;
             if (*opcode == 0xde) {
-                r2 = opcode[1]; st.opbytes = 2;
+                r2 = ~opcode[1]; st.opbytes = 2;
             } else {
-                r2 = arithmeticOperand(*opcode - 0x98, state);
+                r2 = ~arithmeticOperand(*opcode - 0x98, state);
             }
-            r2 += state->fl.cy;
-            r2 = 256 - r2;
-            uint16_t res = (uint16_t) state->reg[0] + (uint16_t) r2;
-            state->fl.ac = (state->reg[0] & 0x0f) + (r2 & 0x0f) > 0x0f;
+            uint16_t res = state->reg[0] + r2 + !(state->fl.cy);
+            state->fl.ac = (state->reg[0] & 0x0f) + (r2 & 0x0f) + !(state->fl.cy) > 0x0f;
             set_result(res, state);
             state->fl.cy = !state->fl.cy;
             break;
@@ -424,15 +420,14 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
             //CMP does not affect the accumulator.
             //arg is subtracted from accumulator internally to
             //set flags.
-            unsigned int r2;
+            byte r2;
             if (*opcode == 0xfe) {
-                r2 = opcode[1]; st.opbytes = 2;
+                r2 = ~opcode[1]; st.opbytes = 2;
             } else {
-                r2 = arithmeticOperand(*opcode - 0xb8, state);
+                r2 = ~arithmeticOperand(*opcode - 0xb8, state);
             }
-            r2 = 256 - r2;
-            uint16_t res = (uint16_t) state->reg[0] + (uint16_t) r2;
-            state->fl.ac = (state->reg[0] & 0x0f) + (r2 & 0x0f) > 0x0f;
+            uint16_t res = state->reg[0] + r2 + 1;
+            state->fl.ac = (state->reg[0] & 0x0f) + (r2 & 0x0f) + 1 > 0x0f;
             set_flags(res, state);
             state->fl.cy = !state->fl.cy;
             break;
