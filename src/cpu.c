@@ -16,7 +16,13 @@ CPUState *newState(unsigned int mem_size) {
     for (int r = 0; r < 7; r++) {
         cs->reg[r] = 0;
     }
+
+    for (int port = 0; port < 256; port++) {
+        cs->ports[port] = 0;
+    }
+
     cs->pc = 0;
+    cs->sp = 0;
     cs->int_enable = 0;
 
     cs->memory = (byte *) calloc(mem_size, sizeof(byte));
@@ -103,9 +109,14 @@ int stepCPU(CPUState *state) {
 }
 
 int interruptCPU(CPUState *state, byte opcode) {
+    //this only supports an RST instruction
     if (state->int_enable) {
-        OpStats st = executeOp(state, &opcode);
-        return st.opcycles;
+        int rst_adr = opcode - 0xc7;
+        state->sp -= 2;
+        state->memory[state->sp] = state->pc & 0xff;
+        state->memory[state->sp+1] = state->pc >> 8;
+        state->pc = rst_adr;
+        return 11;
     } else return 0;
 }
 
@@ -121,11 +132,20 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
         case 0x00: case 0x08: case 0x10: case 0x18:
         case 0x20: case 0x28: case 0x30: case 0x38:
         case 0xcb: case 0xd9: case 0xdd: case 0xed:
-        case 0xfd: st.opcycles = 4; break;
+        case 0xfd:
+        {
+            st.opcycles = 4; break;
+        }
         //STC
-        case 0x37: st.opcycles = 4; state->fl.cy = 1; break;
+        case 0x37:
+        {
+            st.opcycles = 4; state->fl.cy = 1; break;
+        }
         //CMC
-        case 0x3f: st.opcycles = 4; state->fl.cy = !state->fl.cy; break;
+        case 0x3f:
+        {
+            st.opcycles = 4; state->fl.cy = !state->fl.cy; break;
+        }
         //INR
         case 0x04: case 0x0c: case 0x14: case 0x1c:
         case 0x24: case 0x2c: case 0x34: case 0x3c:
@@ -910,8 +930,14 @@ static OpStats executeOp(CPUState *state, byte *opcode) {
             break;
         }
         //HLT
-        case 0x76: st.opbytes = 0; break;
-        default: unknownOp(state); break;
+        case 0x76:
+        {
+            st.opbytes = 0; break;
+        }
+        default:
+        {
+            unknownOp(state); break;
+        }
     }
     return st;
 }

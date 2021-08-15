@@ -16,7 +16,7 @@ Machine *newMachine() {
     uint8_t *framebuffer = (uint8_t *) &cs->memory[0x2400];
     //coin slot is port 1, bit 0.
     //when there is no coin this bit will be set.
-    cs->ports[0] = 0x01;
+    cs->ports[1] = 0x80;
 
     m->cs = cs;
     m->shift_reg = 0;

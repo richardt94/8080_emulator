@@ -49,6 +49,11 @@ int main(int argc, char **argv) {
     for (int fidx = 1; fidx < argc; fidx++) {
         FILE *bin_file = fopen(argv[fidx], "rb");
 
+        if (bin_file == NULL) {
+            fprintf(stderr, "Failed to open ROM file!\n");
+            exit(1);
+        }
+
         fprintf(stderr, "Reading file %s into memory at 0x%04x\n",
             argv[fidx], memctr);
         //size of file in bytes
@@ -81,7 +86,7 @@ int main(int argc, char **argv) {
     }
 
     destroyMachine(m);
-
+    
     SDL_DestroyWindow(window);
     SDL_Quit();
 
