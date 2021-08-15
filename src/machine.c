@@ -16,7 +16,7 @@ Machine *newMachine() {
     uint8_t *framebuffer = (uint8_t *) &cs->memory[0x2400];
     //coin slot is port 1, bit 0.
     //when there is no coin this bit will be set.
-    cs->ports[1] = 0x80;
+    cs->ports[0] = 0x01;
 
     m->cs = cs;
     m->shift_reg = 0;
@@ -37,6 +37,9 @@ static void handleOutput(byte port, Machine *m) {
         m->shift_reg >>= 8;
         m->shift_reg |= m->cs->ports[4] << 8;
     }
+    //clear output port
+    m->cs->ports[port] = 0;
+
     //ignore other outputs for now
     //(will need to deal with sound eventually)
 }
