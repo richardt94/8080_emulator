@@ -16,7 +16,7 @@ sudo make install
 These steps will be slightly different if you're installing on a system that uses a different build system to Make.
 
 ## Usage
-If SDL2 was installed properly, the build steps will install two programs, `emu8080` and `disassemble`. `emu8080` takes a list of files as arguments, which are loaded sequentially into the emulated memory and executed (e.g. `invaders.h`, `invaders.g`, `invaders.f` and `invaders.e` from the _Space Invaders_ ROM). You'll need to find 
+If SDL2 was installed properly, the build steps will install two programs, `emu8080` and `disassemble`. `emu8080` takes a list of files as arguments, which are loaded sequentially into the emulated memory and executed (e.g. `invaders.h`, `invaders.g`, `invaders.f` and `invaders.e` from the _Space Invaders_ ROM). `disassemble` takes a binary executable for the 8080 and translates the instructions to assembly language using the mnemonics from the Intel 8080 Assembly Language Programming Manual.
 
 ## Notes
 The CPU emulation passes all of the common Intel 8080 test binaries I could find. This includes `CPUDIAG.BIN` (Microcosm Associates CPU diagnostics), `CPUTEST.COM` 
