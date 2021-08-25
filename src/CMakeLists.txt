@@ -31,7 +31,8 @@ set(EMU8080_HEADERS
 
 if(SDL2_FOUND)
   add_executable(emu8080 ${EMU8080_SOURCES} ${EMU8080_HEADERS})
-  target_link_libraries(emu8080 SDL2)
+  target_include_directories(emu8080 PRIVATE ${SDL2_INCLUDE_DIRS})
+  target_link_libraries(emu8080 ${SDL2_LIBRARIES})
   install(TARGETS emu8080
     RUNTIME DESTINATION bin
   )
