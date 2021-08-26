@@ -75,14 +75,34 @@ int main(int argc, char **argv) {
     int quit = 0;
     SDL_Event e;
 
+    unsigned int frames = 0;
+
     while (!quit) {
         stepFrame(m);
         showBuffer(m->framebuffer, screenSurface);
         SDL_UpdateWindowSurface(window);
 
+        frames++;
+
         while (SDL_PollEvent(&e) != 0) {
-            if (e.type == SDL_QUIT) quit = 1;
+            if (e.type == SDL_QUIT)
+                {
+                    quit = 1;
+                    uint32_t time = SDL_GetTicks();
+                    double fps = 1000 * (double) frames / (double) time;
+                    time /= 1000;
+                    printf("Rendered %d frames in %d seconds = %.2f fps\n", frames, time, fps);
+                }
         }
+
+        uint32_t currentTime = SDL_GetTicks();
+        //60 fps - each frame should take
+        //approx. 16667 microseconds
+        //modular multiplication avoids overflow
+        unsigned int waitTime =
+          (16667 - ((currentTime % 16667 * 1000) % 16667)) / 1000;
+        SDL_Delay(waitTime);
+
     }
 
     destroyMachine(m);
