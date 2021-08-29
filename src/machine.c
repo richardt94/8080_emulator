@@ -15,13 +15,20 @@ Machine *newMachine() {
     //Video RAM starts at 9K
     uint8_t *framebuffer = (uint8_t *) &cs->memory[0x2400];
     //coin slot is port 1, bit 0.
-    //when there is no coin this bit will be set.
-    cs->ports[0] = 0x01;
+    //start with a coin in the machine.
+    cs->ports[0] = 0x80;
 
     m->cs = cs;
     m->shift_reg = 0;
     m->shift_amt = 0;
     m->framebuffer = framebuffer;
+
+    //set "always 1" bits from computer archaeology
+    //and coin dip.
+    m->button_inputs[0] = 0x0d;
+    m->button_inputs[1] = 0x08;
+    m->button_inputs[2] = 0x00;
+
     return m;
 }
 
@@ -47,7 +54,9 @@ static void handleOutput(byte port, Machine *m) {
 void stepFrame(Machine *m) {
     int ncycles = 0;
     while (ncycles < cycles_per_frame / 2) {
-        // fire input port for shift register
+        // fire input ports according to button and shift reg state
+        for (int inport = 0; inport < 3; inport++)
+            m->cs->ports[inport] = m->button_inputs[inport];
         m->cs->ports[3] = (m->shift_reg >> (8 - m->shift_amt)) & 0xff;
         ncycles += stepCPU(m->cs);
         if (m->cs->write_flag >= 0) handleOutput(m->cs->write_flag, m);
@@ -63,4 +72,46 @@ void stepFrame(Machine *m) {
     interruptCPU(m->cs, 0xd7);
 }
 
+void keyPressRelease(button b, Machine *m, int press) {
+    //set/unset bits in the input bus corresponding
+    //to button presses
+    int port_num = -1;
+    uint8_t port_val = 0;
+    switch (b) {
+        case COIN:
+        {
+            port_num = 1;
+            port_val = 0x01;
+            break;
+        }
+        case START1P:
+        {
+            port_num = 1;
+            port_val = 0x04;
+            break;
+        }
+        case LEFTP1:
+        {
+            port_num = 1;
+            port_val = 0x20;
+            break;
+        }
+        case RIGHTP1:
+        {
+            port_num = 1;
+            port_val = 0x40;
+            break;
+        }
+        case FIREP1:
+        {
+            port_num = 1;
+            port_val = 0x10;
+            break;
+        }
+        default: break;
+    }
+    if (port_val < 0) return;
+    if (press) m->button_inputs[port_num] |= port_val;
+    else m->button_inputs[port_num] &= ~port_val;
+}
 

@@ -21,6 +21,9 @@ const int window_width = 3 * sinv_width;
 static void showBuffer(const byte *buffer, SDL_Surface *surf);
 static void setPixel(SDL_Surface *surf, int x, int y, int val);
 
+//handle keyboard input
+static void handleKB(SDL_Keycode k, Machine *m, int press);
+
 int main(int argc, char **argv) {
 
     if (argc < 2) {
@@ -77,6 +80,8 @@ int main(int argc, char **argv) {
 
     unsigned int frames = 0;
 
+    uint32_t loop_start = SDL_GetTicks();
+
     while (!quit) {
         stepFrame(m);
         showBuffer(m->framebuffer, screenSurface);
@@ -85,14 +90,17 @@ int main(int argc, char **argv) {
         frames++;
 
         while (SDL_PollEvent(&e) != 0) {
-            if (e.type == SDL_QUIT)
-                {
-                    quit = 1;
-                    uint32_t time = SDL_GetTicks();
-                    double fps = 1000 * (double) frames / (double) time;
-                    time /= 1000;
-                    printf("Rendered %d frames in %d seconds = %.2f fps\n", frames, time, fps);
-                }
+            if (e.type == SDL_QUIT) {
+                quit = 1;
+                uint32_t time = SDL_GetTicks() - loop_start;
+                double fps = 1000 * (double) frames / (double) time;
+                time /= 1000;
+                printf("Rendered %d frames in %d seconds = %.2f fps\n", frames, time, fps);
+            } else if (e.type == SDL_KEYDOWN) {
+                handleKB(e.key.keysym.sym, m, PRESS);
+            } else if (e.type == SDL_KEYUP) {
+                handleKB(e.key.keysym.sym, m, RELEASE);
+            }
         }
 
         uint32_t currentTime = SDL_GetTicks();
@@ -135,4 +143,17 @@ static void setPixel(SDL_Surface *surf, int x, int y, int val) {
     uint8_t *pixel = surf->pixels;
     pixel += (y * surf->pitch) + (x * sizeof(uint32_t));
     *((uint32_t *) pixel) = 0xffffffff * val;
+}
+
+static void handleKB(SDL_Keycode k, Machine *m, int press) {
+    button b = UNDEF_BUTTON;
+    switch (k) {
+        case SDLK_c: b = COIN; break;
+        case SDLK_RETURN: b = START1P; break;
+        case SDLK_LEFT: b = LEFTP1; break;
+        case SDLK_RIGHT: b = RIGHTP1; break;
+        case SDLK_SPACE: b = FIREP1; break;
+        default: break;
+    }
+    keyPressRelease(b, m, press);
 }
