@@ -1,8 +1,7 @@
 # 8080_emulator
 Emulator for an 8080 _Space Invaders_ arcade machine, now in C.
 
-Currently supports emulation of _Space Invaders_ in "attract" mode (i.e. I haven't implemented keyboard input for controls yet.)
-
+Currently supports emulation of a single-player _Space Invaders_ game. Press C to insert a coin, then Enter to start the game, left and right to move and space to shoot.
 ## Installation
 Start by installing the dependencies. Building from source requires [SDL2](https://www.libsdl.org/) and [CMake](https://cmake.org/). Additionally, the test suite for the CPU requires [Check](https://libcheck.github.io/check/). The CMake install script will automatically detect whether SDL2 and Check are available on your system.
 
