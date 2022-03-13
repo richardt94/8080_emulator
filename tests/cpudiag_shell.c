@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
         if (cs->memory[cs->pc] == 0xcd && cs->memory[cs->pc+1] == 0x05 && cs->memory[cs->pc+2] == 0x00) {
             if (cs->reg[2] == 9) {
                 uint16_t offset = (cs->reg[3]<<8) | (cs->reg[4]);    
-                char *str = &cs->memory[offset];
+                char *str = (char *) &cs->memory[offset];
                 while (*str != '$')
                     printf("%c", *str++);
                 // printf("\n");
